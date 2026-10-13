@@ -16,14 +16,29 @@ import java.util.function.Function;
 public class JwtService implements IJwtService {
 
     private final String secret;
+    private final long expirationMs;
 
-    public JwtService(@Value("${app.jwt.secret}") String secret) {
+    public JwtService(@Value("${app.jwt.secret}") String secret,
+                      @Value("${app.jwt.expiration-ms:86400000}") long expirationMs) {
         this.secret = secret;
+        this.expirationMs = expirationMs;
     }
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secret);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    @Override
+    public String generateToken(Integer usuarioId, String email, List<String> roles) {
+        return Jwts.builder()
+                .subject(String.valueOf(usuarioId))
+                .claim("email", email)
+                .claim("roles", roles != null ? roles : Collections.emptyList())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .signWith(getSigningKey())
+                .compact();
     }
 
     @Override
