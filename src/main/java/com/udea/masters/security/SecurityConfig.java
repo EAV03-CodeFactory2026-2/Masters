@@ -3,6 +3,8 @@ package com.udea.masters.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -14,6 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -26,6 +29,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/health").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/usuarios/registro").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/tipos-documento/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/modalidades/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/monedas/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/proveedores/directorio").hasRole("PROPIETARIO")
+                .requestMatchers(HttpMethod.GET, "/api/v1/usuarios").hasRole("PROPIETARIO")
+                .requestMatchers(HttpMethod.GET, "/api/v1/usuarios/rol/**").hasRole("PROPIETARIO")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
