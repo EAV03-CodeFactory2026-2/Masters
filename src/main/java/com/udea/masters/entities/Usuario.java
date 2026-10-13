@@ -34,6 +34,7 @@ public class Usuario {
     @Column(nullable = false, length = 20)
     private String telefono;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(nullable = false, length = 255)
     private String contrasena;
 
