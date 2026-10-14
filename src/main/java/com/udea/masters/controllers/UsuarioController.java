@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,22 +21,12 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/usuarios")
+@RequiredArgsConstructor
 @Tag(name = "Usuarios", description = "Gestión de usuarios del dominio, registro de roles y perfiles")
 public class UsuarioController {
 
     private final IUsuarioService usuarioService;
     private final IRegistroService registroService;
-
-    @Autowired
-    public UsuarioController(IUsuarioService usuarioService, IRegistroService registroService) {
-        this.usuarioService = usuarioService;
-        this.registroService = registroService;
-    }
-
-    public UsuarioController(IUsuarioService usuarioService) {
-        this.usuarioService = usuarioService;
-        this.registroService = null;
-    }
 
     @Operation(summary = "Registrar cuenta con rol (Propietario, Proveedor, Cliente)", description = "Permite a un usuario registrar su cuenta e iniciar sesión automáticamente con su rol activo.")
     @PostMapping("/registro")
