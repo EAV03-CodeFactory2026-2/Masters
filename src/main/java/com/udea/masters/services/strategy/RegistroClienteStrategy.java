@@ -33,7 +33,7 @@ public class RegistroClienteStrategy implements IRegistroRolStrategy {
             throw new ReglaNegocioException("Apellidos es obligatorio");
         }
         if (request.getTelefono() == null || request.getTelefono().trim().isEmpty()) {
-            throw new ReglaNegocioException("\"Teléfono de contacto\" es obligatorio");
+            throw new ReglaNegocioException("Teléfono de contacto es obligatorio");
         }
         if (!request.getTelefono().trim().matches("^\\d{7,15}$")) {
             throw new ReglaNegocioException("Ingresa un teléfono válido de 7 a 15 dígitos.");
