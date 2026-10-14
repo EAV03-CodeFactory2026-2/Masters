@@ -57,7 +57,7 @@ public class RolPerfilPropietarioStrategy implements IRolPerfilStrategy {
             throw new ReglaNegocioException("Tipo de documento es obligatorio");
         }
         if (numeroDoc == null || numeroDoc.trim().isEmpty()) {
-            throw new ReglaNegocioException("\"Número de documento\" es obligatorio");
+            throw new ReglaNegocioException("Número de documento es obligatorio");
         }
 
         String finalTipoDocCodigo = tipoDocCodigo.trim();
