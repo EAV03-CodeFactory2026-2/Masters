@@ -34,13 +34,13 @@ public class RegistroPropietarioStrategy implements IRegistroRolStrategy {
         boolean faltaDocumento = request.getNumeroDocumento() == null || request.getNumeroDocumento().trim().isEmpty();
 
         if (faltaNombre && faltaDocumento) {
-            throw new ReglaNegocioException("\"Nombres\" y \"Número de documento\" son obligatorios");
+            throw new ReglaNegocioException("Nombres y Número de documento son obligatorios");
         }
         if (faltaNombre) {
-            throw new ReglaNegocioException("\"Nombres\" es obligatorio");
+            throw new ReglaNegocioException("Nombres es obligatorio");
         }
         if (faltaDocumento) {
-            throw new ReglaNegocioException("\"Número de documento\" es obligatorio");
+            throw new ReglaNegocioException("Número de documento es obligatorio");
         }
 
         if (!request.getNombre().trim().matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]{2,100}$")) {
@@ -48,7 +48,7 @@ public class RegistroPropietarioStrategy implements IRegistroRolStrategy {
         }
 
         if (request.getApellido() == null || request.getApellido().trim().isEmpty()) {
-            throw new ReglaNegocioException("\"Apellidos\" es obligatorio");
+            throw new ReglaNegocioException("Apellidos es obligatorio");
         }
 
         if (request.getTipoDocumento() == null || request.getTipoDocumento().trim().isEmpty()) {
