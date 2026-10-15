@@ -97,6 +97,8 @@ src/main/java/com/udea/masters/
 | `POST`   | `/api/v1/usuarios`                           | Bearer JWT  | Creación de usuario maestro                         |
 | `POST`   | `/api/v1/usuarios/{id}/roles`                | Bearer JWT  | Asignación de rol a un usuario                      |
 | `GET`    | `/api/v1/proveedores/directorio?query=&pagina=` | Bearer JWT (Propietario) | Búsqueda paginada de proveedores activos (10 por página) |
+| `GET`    | `/api/v1/proveedores/me/horario`             | Bearer JWT (rol activo Proveedor) | Horario semanal del proveedor autenticado (7 días) |
+| `PUT`    | `/api/v1/proveedores/me/horario`             | Bearer JWT (rol activo Proveedor) | Reemplaza por completo el horario semanal |
 | `DELETE` | `/api/v1/usuarios/{id}/roles/{nombreRol}`    | Bearer JWT  | Remoción de rol de un usuario                       |
 | `GET`    | `/swagger-ui.html`                           | Público     | Documentación interactiva Swagger UI                |
 | `GET`    | `/v3/api-docs`                               | Público     | Especificación OpenAPI v3 en JSON                   |
@@ -188,6 +190,58 @@ Busca por nombre, apellido o especialidad (coincidencia parcial) o por número d
 | `400` | Criterio con menos de 3 caracteres | `Escribe al menos 3 caracteres para buscar.` |
 | `400` | Página menor a 1 | `La página debe ser un número mayor o igual a 1.` |
 | `403` | El usuario no tiene rol Propietario | — |
+
+### Ejemplo — Horario de atención del proveedor
+
+El proveedor autenticado consulta y guarda su horario semanal recurrente. `GET` siempre devuelve los 7 días, de lunes a domingo; si nunca se ha guardado un horario, todos figuran inactivos y `fechaActualizacion` es `null`.
+
+**Request**
+```http
+PUT /api/v1/proveedores/me/horario
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+Content-Type: application/json
+
+{
+  "dias": [
+    { "dia": "LUNES",  "activo": true, "bloques": [ { "horaInicio": "08:00", "horaFin": "12:00" }, { "horaInicio": "14:00", "horaFin": "18:00" } ] },
+    { "dia": "SABADO", "activo": true, "bloques": [ { "horaInicio": "08:00", "horaFin": "12:00" } ] }
+  ]
+}
+```
+
+**Response 200 OK**
+```json
+{
+  "mensaje": "Horario guardado correctamente.",
+  "fechaActualizacion": "2026-10-14T10:30:00-05:00",
+  "dias": [
+    { "dia": "LUNES", "nombre": "Lunes", "activo": true, "bloques": [ { "horaInicio": "08:00", "horaFin": "12:00" }, { "horaInicio": "14:00", "horaFin": "18:00" } ] },
+    { "dia": "MARTES", "nombre": "Martes", "activo": false, "bloques": [] },
+    "...",
+    { "dia": "DOMINGO", "nombre": "Domingo", "activo": false, "bloques": [] }
+  ]
+}
+```
+
+Reglas:
+- Guardar **reemplaza por completo** el horario anterior: los días que no se envían quedan inactivos.
+- Un día con `"activo": false` se guarda inactivo y sus bloques se ignoran. Si se omite `activo`, el día está activo cuando trae bloques.
+- Cada día activo admite de 1 a 4 bloques, en formato `HH:mm` de 24 horas y en intervalos de 15 minutos.
+- Los bloques de un mismo día no pueden superponerse; los contiguos (`08:00-12:00` y `12:00-14:00`) sí se permiten. No se admiten franjas que crucen la medianoche.
+- Si una regla falla, no se guarda nada y el horario anterior se conserva.
+
+| Código | Cuándo | `error` |
+|--------|--------|---------|
+| `400` | Ningún día activo | `Debes definir al menos un día de atención.` |
+| `400` | Hora de fin igual o anterior a la de inicio | `La hora de fin debe ser posterior a la hora de inicio.` (incluye `dia` y `bloque`) |
+| `400` | Bloques superpuestos | `Los bloques del miércoles se superponen.` (incluye `dia` y `bloque`) |
+| `400` | Más de 4 bloques en un día | `Cada día admite un máximo de 4 bloques.` (incluye `dia`) |
+| `400` | Hora que no es múltiplo de 15 minutos | `Las horas deben estar en intervalos de 15 minutos.` (incluye `dia` y `bloque`) |
+| `400` | Hora con formato inválido | `Las horas deben tener el formato HH:mm de 24 horas (ej. 08:00).` |
+| `403` | La cuenta no opera con el rol activo Proveedor | `Solo un Proveedor puede gestionar su horario de atención.` |
+| `404` | La cuenta no tiene perfil de proveedor | `No encontramos el perfil de proveedor de tu cuenta.` |
+
+> **Rol activo**: si el JWT trae el claim `rolActivo` (lo emite WebAuth), el filtro de seguridad solo concede ese rol, y solo si está en `roles`. Así, una cuenta Propietario + Proveedor que opera como Propietario no puede gestionar el horario. Si el token no trae `rolActivo`, se conservan todos los roles.
 
 ## Datos de referencia sembrados al iniciar
 
