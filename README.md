@@ -96,6 +96,7 @@ src/main/java/com/udea/masters/
 | `GET`    | `/api/v1/usuarios/rol/{nombreRol}`           | Bearer JWT  | Consulta de usuarios por rol (ej. `PROVEEDOR`)      |
 | `POST`   | `/api/v1/usuarios`                           | Bearer JWT  | Creación de usuario maestro                         |
 | `POST`   | `/api/v1/usuarios/{id}/roles`                | Bearer JWT  | Asignación de rol a un usuario                      |
+| `GET`    | `/api/v1/proveedores/directorio?query=&pagina=` | Bearer JWT (Propietario) | Búsqueda paginada de proveedores activos (10 por página) |
 | `DELETE` | `/api/v1/usuarios/{id}/roles/{nombreRol}`    | Bearer JWT  | Remoción de rol de un usuario                       |
 | `GET`    | `/swagger-ui.html`                           | Público     | Documentación interactiva Swagger UI                |
 | `GET`    | `/v3/api-docs`                               | Público     | Especificación OpenAPI v3 en JSON                   |
@@ -145,6 +146,48 @@ Content-Type: application/json
   "roles": ["PROPIETARIO"]
 }
 ```
+
+### Ejemplo — Buscar en el directorio de proveedores
+
+```http
+GET /api/v1/proveedores/directorio?query=Carlos%20Ruiz&pagina=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+```
+
+Busca por nombre, apellido o especialidad (coincidencia parcial) o por número de documento (exacto), sin distinguir mayúsculas. Solo devuelve usuarios activos con el rol `Proveedor`. Cada resultado incluye el tipo y número de documento para diferenciar homónimos, y `esCuentaActual` indica si es la cuenta que consulta (un Propietario que también es Proveedor puede asignarse servicios). Los `idUsuario` son los que se envían a Business para asignar proveedores a un servicio.
+
+```json
+{
+  "mensaje": "Proveedores encontrados.",
+  "proveedores": [
+    {
+      "idUsuario": 11,
+      "nombre": "Carlos",
+      "apellido": "Ruiz",
+      "correo": "carlos.ruiz@correo.com",
+      "telefono": "3001234567",
+      "tipoDocumento": "CC",
+      "tipoDocumentoNombre": "Cédula de Ciudadanía",
+      "numeroDocumento": "123456",
+      "especialidad": "Estilista",
+      "descripcionProfesional": "Cortes y peinados",
+      "esCuentaActual": false
+    }
+  ],
+  "pagina": 1,
+  "tamanoPagina": 10,
+  "totalResultados": 1,
+  "totalPaginas": 1,
+  "hayMasPaginas": false
+}
+```
+
+| Código | Cuándo | `error` / `mensaje` |
+|--------|--------|---------|
+| `200` | Sin coincidencias | `mensaje`: `No encontramos proveedores con ese criterio.` |
+| `400` | Criterio con menos de 3 caracteres | `Escribe al menos 3 caracteres para buscar.` |
+| `400` | Página menor a 1 | `La página debe ser un número mayor o igual a 1.` |
+| `403` | El usuario no tiene rol Propietario | — |
 
 ## Datos de referencia sembrados al iniciar
 
