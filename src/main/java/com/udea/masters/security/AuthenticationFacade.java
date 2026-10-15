@@ -18,4 +18,14 @@ public class AuthenticationFacade implements IAuthenticationFacade {
         }
         return null;
     }
+
+    @Override
+    public boolean tieneRol(String nombreRol) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || nombreRol == null) {
+            return false;
+        }
+        String autoridad = "ROLE_" + nombreRol.toUpperCase();
+        return auth.getAuthorities().stream().anyMatch(a -> autoridad.equalsIgnoreCase(a.getAuthority()));
+    }
 }
