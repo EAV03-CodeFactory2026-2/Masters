@@ -99,6 +99,8 @@ src/main/java/com/udea/masters/
 | `GET`    | `/api/v1/proveedores/directorio?query=&pagina=` | Bearer JWT (Propietario) | Búsqueda paginada de proveedores activos (10 por página) |
 | `GET`    | `/api/v1/proveedores/me/horario`             | Bearer JWT (rol activo Proveedor) | Horario semanal del proveedor autenticado (7 días) |
 | `PUT`    | `/api/v1/proveedores/me/horario`             | Bearer JWT (rol activo Proveedor) | Reemplaza por completo el horario semanal |
+| `POST`   | `/api/v1/negocios/{negocioId}/recursos`      | Bearer JWT (rol activo Propietario, dueño del negocio) | Registro de un recurso físico (espacio o equipo) |
+| `GET`    | `/api/v1/negocios/{negocioId}/recursos`      | Bearer JWT (rol activo Propietario, dueño del negocio) | Listado de recursos del negocio (puede ser vacío) |
 | `DELETE` | `/api/v1/usuarios/{id}/roles/{nombreRol}`    | Bearer JWT  | Remoción de rol de un usuario                       |
 | `GET`    | `/swagger-ui.html`                           | Público     | Documentación interactiva Swagger UI                |
 | `GET`    | `/v3/api-docs`                               | Público     | Especificación OpenAPI v3 en JSON                   |
@@ -242,6 +244,51 @@ Reglas:
 | `404` | La cuenta no tiene perfil de proveedor | `No encontramos el perfil de proveedor de tu cuenta.` |
 
 > **Rol activo**: si el JWT trae el claim `rolActivo` (lo emite WebAuth), el filtro de seguridad solo concede ese rol, y solo si está en `roles`. Así, una cuenta Propietario + Proveedor que opera como Propietario no puede gestionar el horario. Si el token no trae `rolActivo`, se conservan todos los roles.
+
+### Ejemplo — Registrar recurso físico
+
+**Request**
+```http
+POST /api/v1/negocios/5/recursos
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+Content-Type: application/json
+
+{
+  "nombre": "Camilla de masajes",
+  "tipo": "Equipo",
+  "cantidad": 3,
+  "descripcion": "Camilla plegable"
+}
+```
+
+**Response 201 Created**
+```json
+{
+  "mensaje": "Recurso registrado correctamente.",
+  "recurso": {
+    "idRecurso": 1,
+    "negocioId": 5,
+    "nombre": "Camilla de masajes",
+    "tipo": "Equipo",
+    "cantidad": 3,
+    "descripcion": "Camilla plegable",
+    "estado": "Activo"
+  }
+}
+```
+
+| Código | Cuándo | `error` |
+|--------|--------|---------|
+| `400` | Cantidad no entera o fuera de 1..999 | `La cantidad debe ser un número entero entre 1 y 999.` |
+| `400` | Nombre vacío / tipo distinto de `Espacio` o `Equipo` | Mensaje de la validación |
+| `403` | El rol activo no es Propietario | `Solo un Propietario puede gestionar los recursos del negocio.` |
+| `403` | El negocio es de otro propietario | `No tienes permiso para gestionar los recursos de este negocio.` |
+| `404` | El negocio no existe | `Negocio no encontrado.` |
+| `409` | Nombre repetido en el negocio (sin distinguir mayúsculas ni tildes) | `Ya existe un recurso con este nombre en el negocio.` |
+
+`GET /api/v1/negocios/5/recursos` retorna `{"mensaje": ..., "recursos": [...]}`; si no hay recursos, `recursos` es `[]` y el mensaje es `Este negocio aún no tiene recursos registrados.`
+
+> El nombre es único por negocio sin distinguir mayúsculas, tildes ni espacios extra (columna `nombre_normalizado` con restricción única `negocio_id, nombre_normalizado`); se permite repetir en otro negocio. Masters lee la tabla `negocio` como entidad de **solo lectura** (`@Immutable`), únicamente para validar al propietario. Los recursos usan la misma tabla `recurso` que antes estaba en Business, así que los datos existentes se conservan.
 
 ## Datos de referencia sembrados al iniciar
 
