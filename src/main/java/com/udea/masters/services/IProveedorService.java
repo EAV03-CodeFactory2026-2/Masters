@@ -1,9 +1,7 @@
 package com.udea.masters.services;
 
-import com.udea.masters.controllers.DTOs.ProveedorDirectorioResponse;
-
-import java.util.List;
+import com.udea.masters.controllers.DTOs.DirectorioProveedoresResponse;
 
 public interface IProveedorService {
-    List<ProveedorDirectorioResponse> consultarDirectorio(String query);
+    DirectorioProveedoresResponse consultarDirectorio(String criterio, Integer pagina);
 }
