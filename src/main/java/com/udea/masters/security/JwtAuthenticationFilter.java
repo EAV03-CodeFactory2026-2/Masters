@@ -45,6 +45,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     List<String> roles = jwtService.extractRoles(jwt);
+                    String rolActivo = jwtService.extractRolActivo(jwt);
+                    // Con un rol activo en el token, el usuario solo opera con ese rol (si realmente lo tiene).
+                    // Sin el claim se conservan todos los roles, como hasta ahora.
+                    if (rolActivo != null && !rolActivo.isBlank()) {
+                        roles = roles.stream()
+                                .filter(r -> r.equalsIgnoreCase(rolActivo))
+                                .collect(Collectors.toList());
+                    }
                     var authorities = roles.stream()
                             .map(r -> new SimpleGrantedAuthority("ROLE_" + r.toUpperCase()))
                             .collect(Collectors.toList());

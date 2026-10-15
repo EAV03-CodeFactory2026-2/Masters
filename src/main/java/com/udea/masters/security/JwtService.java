@@ -62,6 +62,11 @@ public class JwtService implements IJwtService {
     }
 
     @Override
+    public String extractRolActivo(String token) {
+        return extractClaim(token, claims -> claims.get("rolActivo", String.class));
+    }
+
+    @Override
     public boolean isTokenValid(String token) {
         try {
             return !isTokenExpired(token);

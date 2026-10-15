@@ -29,6 +29,23 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(HorarioInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleHorarioInvalido(HorarioInvalidoException ex) {
+        ResponseEntity<Map<String, Object>> respuesta = buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+        if (ex.getDia() != null) {
+            respuesta.getBody().put("dia", ex.getDia());
+        }
+        if (ex.getBloque() != null) {
+            respuesta.getBody().put("bloque", ex.getBloque());
+        }
+        return respuesta;
+    }
+
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<Map<String, Object>> handleAccesoDenegado(AccesoDenegadoException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
