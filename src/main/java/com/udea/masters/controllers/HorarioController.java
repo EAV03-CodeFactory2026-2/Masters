@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/proveedores/me/horario")
+@RequestMapping({"/api/v1/proveedores/me/horario", "/api/v1/proveedores/horario"})
 @RequiredArgsConstructor
 @Tag(name = "Horario de atención", description = "Horario semanal recurrente del proveedor autenticado")
 public class HorarioController {

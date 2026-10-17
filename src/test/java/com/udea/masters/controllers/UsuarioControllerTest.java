@@ -136,5 +136,56 @@ class UsuarioControllerTest {
         org.junit.jupiter.api.Assertions.assertFalse(usuario.toString().contains("SecretoSuperSeguro123!"));
         org.junit.jupiter.api.Assertions.assertFalse(request.toString().contains("SecretoSuperSeguro123!"));
     }
+
+    @Test
+    void soportaAliasDeRutaYCamposPluralesYEndpointPerfil() throws Exception {
+        String payloadPlural = """
+                {
+                  "correo": "laura@correo.com",
+                  "contrasena": "Reservas#2024",
+                  "nombres": "Laura",
+                  "apellidos": "Gómez",
+                  "telefono": "3001234567",
+                  "rol": "Cliente"
+                }
+                """;
+
+        RegistroResponse response = RegistroResponse.builder()
+                .idUsuario(10)
+                .nombre("Laura")
+                .apellido("Gómez")
+                .correo("laura@correo.com")
+                .rolActivo("Cliente")
+                .token("jwt-token")
+                .build();
+
+        when(registroService.registrar(org.mockito.ArgumentMatchers.argThat(req ->
+                "Laura".equals(req.getNombre()) && "Gómez".equals(req.getApellido())
+        ))).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/auth/registro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payloadPlural))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idUsuario").value(10))
+                .andExpect(jsonPath("$.rolActivo").value("Cliente"))
+                .andExpect(jsonPath("$.contrasena").doesNotExist());
+
+        UsuarioResponse perfilResponse = UsuarioResponse.builder()
+                .idUsuario(10)
+                .nombre("Laura")
+                .apellido("Gómez")
+                .correo("laura@correo.com")
+                .build();
+
+        when(usuarioService.obtenerUsuarioPorId(10)).thenReturn(perfilResponse);
+
+        mockMvc.perform(get("/api/v1/usuarios/perfil")
+                        .principal(() -> "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idUsuario").value(10))
+                .andExpect(jsonPath("$.correo").value("laura@correo.com"))
+                .andExpect(jsonPath("$.contrasena").doesNotExist());
+    }
 }
 

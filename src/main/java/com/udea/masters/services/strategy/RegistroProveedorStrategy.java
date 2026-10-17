@@ -40,10 +40,17 @@ public class RegistroProveedorStrategy implements IRegistroRolStrategy {
             throw new ReglaNegocioException("Ingresa un teléfono válido de 7 a 15 dígitos.");
         }
 
-        if (request.getTipoDocumento() == null || request.getTipoDocumento().trim().isEmpty()) {
+        boolean faltaTipoDoc = request.getTipoDocumento() == null || request.getTipoDocumento().trim().isEmpty();
+        boolean faltaNumDoc = request.getNumeroDocumento() == null || request.getNumeroDocumento().trim().isEmpty();
+        boolean faltaEspecialidad = request.getEspecialidad() == null || request.getEspecialidad().trim().isEmpty();
+
+        if (faltaTipoDoc && faltaNumDoc && faltaEspecialidad) {
+            throw new ReglaNegocioException("Los campos Tipo de documento, Número de documento y Especialidad son obligatorios para el rol Proveedor.");
+        }
+        if (faltaTipoDoc) {
             throw new ReglaNegocioException("Tipo de documento es obligatorio");
         }
-        if (request.getNumeroDocumento() == null || request.getNumeroDocumento().trim().isEmpty()) {
+        if (faltaNumDoc) {
             throw new ReglaNegocioException("Número de documento es obligatorio");
         }
 

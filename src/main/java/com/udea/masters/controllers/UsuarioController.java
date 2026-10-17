@@ -16,11 +16,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/usuarios")
+@RequestMapping({"/api/v1/usuarios", "/api/v1/auth"})
 @RequiredArgsConstructor
 @Tag(name = "Usuarios", description = "Gestión de usuarios del dominio, registro de roles y perfiles")
 public class UsuarioController {
@@ -33,6 +34,13 @@ public class UsuarioController {
     public ResponseEntity<RegistroResponse> registrar(@RequestBody RegistroUsuarioRequest request) {
         RegistroResponse response = registroService.registrar(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(summary = "Consultar mi perfil", description = "Obtiene los datos del perfil del usuario autenticado.", security = @SecurityRequirement(name = "BearerAuth"))
+    @GetMapping("/perfil")
+    public ResponseEntity<UsuarioResponse> obtenerMiPerfil(Principal principal) {
+        Integer usuarioId = Integer.parseInt(principal.getName());
+        return ResponseEntity.ok(usuarioService.obtenerUsuarioPorId(usuarioId));
     }
 
     @Operation(summary = "Consultar usuario por ID", description = "Obtiene los detalles del usuario según su identificador único. Requiere rol Propietario o ser el propio usuario.", security = @SecurityRequirement(name = "BearerAuth"))

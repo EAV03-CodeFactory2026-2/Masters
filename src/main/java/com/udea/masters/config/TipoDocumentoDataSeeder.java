@@ -21,6 +21,7 @@ public class TipoDocumentoDataSeeder implements CommandLineRunner {
         List<TipoDocumento> catalogo = List.of(
                 TipoDocumento.builder().codigo("CC").nombre("Cédula de Ciudadanía").build(),
                 TipoDocumento.builder().codigo("CE").nombre("Cédula de Extranjería").build(),
+                TipoDocumento.builder().codigo("TI").nombre("Tarjeta de Identidad").build(),
                 TipoDocumento.builder().codigo("PA").nombre("Pasaporte").build(),
                 TipoDocumento.builder().codigo("PPT").nombre("Permiso por Protección Temporal").build()
         );
