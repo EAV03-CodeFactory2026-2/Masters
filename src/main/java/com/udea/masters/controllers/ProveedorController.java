@@ -39,9 +39,15 @@ public class ProveedorController {
     public ResponseEntity<DirectorioProveedoresResponse> consultarDirectorio(
             @Parameter(description = "Texto a buscar (mínimo 3 caracteres)", example = "Car")
             @RequestParam(required = false) String query,
+            @Parameter(description = "Alias de query para búsqueda", example = "Car")
+            @RequestParam(required = false) String criterio,
             @Parameter(description = "Número de página, desde 1", example = "1")
-            @RequestParam(required = false) Integer pagina
+            @RequestParam(required = false) Integer pagina,
+            @Parameter(description = "Índice de página base 0 (opcional)", example = "0")
+            @RequestParam(required = false) Integer page
     ) {
-        return ResponseEntity.ok(proveedorService.consultarDirectorio(query, pagina));
+        String textoBusqueda = (query != null && !query.isBlank()) ? query : criterio;
+        Integer numeroPagina = pagina != null ? pagina : (page != null ? (page >= 0 ? page + 1 : page) : null);
+        return ResponseEntity.ok(proveedorService.consultarDirectorio(textoBusqueda, numeroPagina));
     }
 }

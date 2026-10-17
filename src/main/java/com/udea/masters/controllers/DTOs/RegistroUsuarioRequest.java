@@ -1,5 +1,6 @@
 package com.udea.masters.controllers.DTOs;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +17,9 @@ public class RegistroUsuarioRequest {
     private String correo;
     @ToString.Exclude
     private String contrasena;
+    @JsonAlias({"nombres"})
     private String nombre;
+    @JsonAlias({"apellidos"})
     private String apellido;
     private String telefono;
 
