@@ -79,7 +79,8 @@ class UsuarioControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.idUsuario").value(1))
-                .andExpect(jsonPath("$.correo").value("maria@udea.edu.co"));
+                .andExpect(jsonPath("$.correo").value("maria@udea.edu.co"))
+                .andExpect(jsonPath("$.contrasena").doesNotExist());
     }
 
     @Test
@@ -94,7 +95,8 @@ class UsuarioControllerTest {
 
         mockMvc.perform(get("/api/v1/usuarios"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].correo").value("maria@udea.edu.co"));
+                .andExpect(jsonPath("$[0].correo").value("maria@udea.edu.co"))
+                .andExpect(jsonPath("$[0].contrasena").doesNotExist());
     }
 
     @Test
@@ -110,6 +112,29 @@ class UsuarioControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Rol asignado correctamente."));
+    }
+
+    @Test
+    void usuarioYRegistroRequestNoExponenContrasenaEnJsonNiToString() throws Exception {
+        com.udea.masters.entities.Usuario usuario = com.udea.masters.entities.Usuario.builder()
+                .idUsuario(1)
+                .nombre("Maria")
+                .apellido("Lopez")
+                .correo("maria@udea.edu.co")
+                .telefono("3001234567")
+                .contrasena("SecretoSuperSeguro123!")
+                .build();
+
+        RegistroUsuarioRequest request = RegistroUsuarioRequest.builder()
+                .correo("maria@udea.edu.co")
+                .contrasena("SecretoSuperSeguro123!")
+                .build();
+
+        String json = objectMapper.writeValueAsString(usuario);
+        org.junit.jupiter.api.Assertions.assertFalse(json.contains("contrasena"));
+        org.junit.jupiter.api.Assertions.assertFalse(json.contains("SecretoSuperSeguro123!"));
+        org.junit.jupiter.api.Assertions.assertFalse(usuario.toString().contains("SecretoSuperSeguro123!"));
+        org.junit.jupiter.api.Assertions.assertFalse(request.toString().contains("SecretoSuperSeguro123!"));
     }
 }
 
