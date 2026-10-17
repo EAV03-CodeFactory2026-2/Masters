@@ -1,7 +1,7 @@
 package com.udea.masters.controllers;
 
 import com.udea.masters.entities.Moneda;
-import com.udea.masters.repositories.MonedaRepository;
+import com.udea.masters.services.IMonedaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,20 +21,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MonedaControllerTest {
 
     @Mock
-    private MonedaRepository monedaRepository;
+    private IMonedaService monedaService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        MonedaController controller = new MonedaController(monedaRepository);
+        MonedaController controller = new MonedaController(monedaService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
     @Test
     void listarMonedasRetorna200() throws Exception {
         Moneda cop = Moneda.builder().monedaCodigoIso("COP").nombreMoneda("Peso Colombiano").build();
-        when(monedaRepository.findAll()).thenReturn(List.of(cop));
+        when(monedaService.listarMonedas()).thenReturn(List.of(cop));
 
         mockMvc.perform(get("/api/v1/monedas"))
                 .andExpect(status().isOk())
@@ -42,3 +42,4 @@ class MonedaControllerTest {
                 .andExpect(jsonPath("$[0].nombreMoneda").value("Peso Colombiano"));
     }
 }
+

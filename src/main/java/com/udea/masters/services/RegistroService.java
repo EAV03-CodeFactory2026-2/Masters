@@ -78,7 +78,8 @@ public class RegistroService implements IRegistroService {
         String token = jwtService.generateToken(
                 usuario.getIdUsuario(),
                 usuario.getCorreo(),
-                List.of(strategy.getNombreRol())
+                List.of(strategy.getNombreRol()),
+                strategy.getNombreRol()
         );
 
         return RegistroResponse.builder()

@@ -31,10 +31,17 @@ public class JwtService implements IJwtService {
 
     @Override
     public String generateToken(Integer usuarioId, String email, List<String> roles) {
+        String rolActivo = (roles != null && !roles.isEmpty()) ? roles.get(0) : null;
+        return generateToken(usuarioId, email, roles, rolActivo);
+    }
+
+    @Override
+    public String generateToken(Integer usuarioId, String email, List<String> roles, String rolActivo) {
         return Jwts.builder()
                 .subject(String.valueOf(usuarioId))
                 .claim("email", email)
                 .claim("roles", roles != null ? roles : Collections.emptyList())
+                .claim("rolActivo", rolActivo)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getSigningKey())
