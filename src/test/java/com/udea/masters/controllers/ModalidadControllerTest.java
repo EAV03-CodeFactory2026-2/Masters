@@ -1,7 +1,7 @@
 package com.udea.masters.controllers;
 
 import com.udea.masters.entities.ModalidadServicio;
-import com.udea.masters.repositories.ModalidadServicioRepository;
+import com.udea.masters.services.IModalidadService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,20 +21,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ModalidadControllerTest {
 
     @Mock
-    private ModalidadServicioRepository modalidadRepository;
+    private IModalidadService modalidadService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        ModalidadController controller = new ModalidadController(modalidadRepository);
+        ModalidadController controller = new ModalidadController(modalidadService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
     @Test
     void listarModalidadesRetorna200() throws Exception {
         ModalidadServicio presencial = ModalidadServicio.builder().idModalidad(1).nombreModalidad("Presencial").build();
-        when(modalidadRepository.findAll()).thenReturn(List.of(presencial));
+        when(modalidadService.listarModalidades()).thenReturn(List.of(presencial));
 
         mockMvc.perform(get("/api/v1/modalidades"))
                 .andExpect(status().isOk())
@@ -42,3 +42,4 @@ class ModalidadControllerTest {
                 .andExpect(jsonPath("$[0].nombreModalidad").value("Presencial"));
     }
 }
+

@@ -1,9 +1,11 @@
 package com.udea.masters.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.udea.masters.controllers.DTOs.RegistroResponse;
+import com.udea.masters.controllers.DTOs.RegistroUsuarioRequest;
 import com.udea.masters.controllers.DTOs.RolAsignacionRequest;
-import com.udea.masters.controllers.DTOs.UsuarioCreateRequest;
 import com.udea.masters.controllers.DTOs.UsuarioResponse;
+import com.udea.masters.services.IRegistroService;
 import com.udea.masters.services.IUsuarioService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,11 +18,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,12 +34,15 @@ class UsuarioControllerTest {
     @Mock
     private IUsuarioService usuarioService;
 
+    @Mock
+    private IRegistroService registroService;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        UsuarioController controller = new UsuarioController(usuarioService);
+        UsuarioController controller = new UsuarioController(usuarioService, registroService);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
@@ -45,27 +52,29 @@ class UsuarioControllerTest {
     }
 
     @Test
-    void crearUsuarioRetorna201() throws Exception {
-        UsuarioCreateRequest request = UsuarioCreateRequest.builder()
+    void registrarUsuarioRetorna201() throws Exception {
+        RegistroUsuarioRequest request = RegistroUsuarioRequest.builder()
                 .nombre("Maria")
                 .apellido("Lopez")
                 .correo("maria@udea.edu.co")
                 .telefono("3001234567")
-                .contrasena("password")
-                .roles(Set.of("Proveedor"))
+                .contrasena("Password123!")
+                .rol("Proveedor")
                 .build();
 
-        UsuarioResponse response = UsuarioResponse.builder()
+        RegistroResponse response = RegistroResponse.builder()
                 .idUsuario(1)
                 .nombre("Maria")
                 .apellido("Lopez")
                 .correo("maria@udea.edu.co")
-                .roles(Set.of("Proveedor"))
+                .rolActivo("Proveedor")
+                .token("jwt-token")
+                .tipoToken("Bearer")
                 .build();
 
-        when(usuarioService.crearUsuario(any(UsuarioCreateRequest.class))).thenReturn(response);
+        when(registroService.registrar(any(RegistroUsuarioRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/usuarios")
+        mockMvc.perform(post("/api/v1/usuarios/registro")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -94,7 +103,7 @@ class UsuarioControllerTest {
                 .nombreRol("Propietario")
                 .build();
 
-        doNothing().when(usuarioService).asignarRolAUsuario(1, "Propietario");
+        doNothing().when(usuarioService).asignarRolAUsuario(eq(1), any(RolAsignacionRequest.class));
 
         mockMvc.perform(post("/api/v1/usuarios/1/roles")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -103,3 +112,4 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("Rol asignado correctamente."));
     }
 }
+

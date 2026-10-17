@@ -4,9 +4,11 @@ import com.udea.masters.entities.Negocio;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/**
- * Lectura de negocios (tabla administrada por Business) para validar al propietario.
- */
+import java.util.List;
+
 @Repository
 public interface NegocioRepository extends JpaRepository<Negocio, Integer> {
+    List<Negocio> findByPropietarioId(Integer propietarioId);
+    boolean existsByIdentificacionFiscalIgnoreCase(String identificacionFiscal);
 }
+
