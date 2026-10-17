@@ -1,5 +1,6 @@
 package com.udea.masters.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,7 +15,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(exclude = "roles")
-@ToString(exclude = "roles")
+@ToString(exclude = {"roles", "contrasena"})
 public class Usuario {
 
     @Id
@@ -34,7 +35,7 @@ public class Usuario {
     @Column(nullable = false, length = 20)
     private String telefono;
 
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     @Column(nullable = false, length = 255)
     private String contrasena;
 
