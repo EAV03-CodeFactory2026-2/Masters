@@ -8,6 +8,8 @@ import com.udea.masters.services.INegocioService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
@@ -17,9 +19,11 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -93,5 +97,66 @@ class NegocioControllerTest {
                         .principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].idNegocio").value(1));
+    }
+
+    @Test
+    void debeRetornar400_cuandoCrearNegocioSinRolPropietario() throws Exception {
+        when(negocioService.crearNegocio(any(NegocioCreateRequest.class), eq(10)))
+                .thenThrow(new IllegalArgumentException("El usuario especificado no tiene el rol de Propietario."));
+
+        mockMvc.perform(post("/api/v1/negocios")
+                        .principal(principal)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestValido())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El usuario especificado no tiene el rol de Propietario."));
+    }
+
+    @Test
+    void debeRetornar400_cuandoListarNegociosSinRolPropietario() throws Exception {
+        when(negocioService.listarMisNegocios(10))
+                .thenThrow(new IllegalArgumentException("El usuario no tiene el rol de Propietario."));
+
+        mockMvc.perform(get("/api/v1/negocios")
+                        .principal(principal))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El usuario no tiene el rol de Propietario."));
+    }
+
+    @Test
+    void debeRetornar200ConListaVacia_cuandoPropietarioSinNegocios() throws Exception {
+        when(negocioService.listarMisNegocios(10)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/negocios")
+                        .principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    static Stream<NegocioCreateRequest> requestsInvalidos() {
+        return Stream.of(
+                NegocioCreateRequest.builder().direccionNegocio("Calle 1").telefono("3001234567")
+                        .identificacionFiscal("NIT-1").monedaCodigoIso("COP").build(),
+                NegocioCreateRequest.builder().nombreNegocio("Spa").direccionNegocio("Calle 1").telefono("abc")
+                        .identificacionFiscal("NIT-1").monedaCodigoIso("COP").build(),
+                NegocioCreateRequest.builder().nombreNegocio("Spa").direccionNegocio("Calle 1").telefono("3001234567")
+                        .identificacionFiscal("N".repeat(21)).monedaCodigoIso("COP").build(),
+                NegocioCreateRequest.builder().nombreNegocio("Spa").direccionNegocio("Calle 1").telefono("3001234567")
+                        .identificacionFiscal("NIT-1").monedaCodigoIso("PESOS").build()
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("requestsInvalidos")
+    void debeRetornar400SinInvocarServicio_cuandoRequestInvalido(NegocioCreateRequest request) throws Exception {
+        String body = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(post("/api/v1/negocios")
+                        .principal(principal)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(negocioService);
     }
 }
