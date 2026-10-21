@@ -8,6 +8,9 @@ import com.udea.masters.services.IServicioService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
@@ -18,9 +21,11 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -103,5 +108,58 @@ class ServicioControllerTest {
         mockMvc.perform(get("/api/v1/servicios/negocio/10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nombre").value("Corte de cabello"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "El usuario no tiene el rol de Propietario.",
+            "Negocio no encontrado.",
+            "No tienes permisos para agregar servicios a este negocio."
+    })
+    void debeRetornar400_cuandoServicioRechazaCreacion(String mensaje) throws Exception {
+        when(servicioService.crearServicio(any(ServicioCreateRequest.class), eq(1)))
+                .thenThrow(new IllegalArgumentException(mensaje));
+
+        mockMvc.perform(post("/api/v1/servicios")
+                        .principal(principal)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestValido())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(mensaje));
+    }
+
+    static Stream<ServicioCreateRequest> requestsInvalidos() {
+        ServicioCreateRequest sinNegocio = ServicioCreateRequest.builder().modalidadId(1).nombre("Corte")
+                .descripcion("Clásico").duracionMinutos(30).precio(new BigDecimal("10.00")).build();
+        ServicioCreateRequest duracionCero = ServicioCreateRequest.builder().negocioId(10).modalidadId(1)
+                .nombre("Corte").descripcion("Clásico").duracionMinutos(0).precio(new BigDecimal("10.00")).build();
+        ServicioCreateRequest precioCero = ServicioCreateRequest.builder().negocioId(10).modalidadId(1)
+                .nombre("Corte").descripcion("Clásico").duracionMinutos(30).precio(BigDecimal.ZERO).build();
+        ServicioCreateRequest nombreVacio = ServicioCreateRequest.builder().negocioId(10).modalidadId(1)
+                .nombre(" ").descripcion("Clásico").duracionMinutos(30).precio(new BigDecimal("10.00")).build();
+        return Stream.of(sinNegocio, duracionCero, precioCero, nombreVacio);
+    }
+
+    @ParameterizedTest
+    @MethodSource("requestsInvalidos")
+    void debeRetornar400SinInvocarServicio_cuandoRequestInvalido(ServicioCreateRequest request) throws Exception {
+        String body = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(post("/api/v1/servicios")
+                        .principal(principal)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(servicioService);
+    }
+
+    @Test
+    void debeRetornar200ConListaVacia_cuandoNegocioSinServicios() throws Exception {
+        when(servicioService.listarServiciosPorNegocio(10)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/servicios/negocio/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
     }
 }
