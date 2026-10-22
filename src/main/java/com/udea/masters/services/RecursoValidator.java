@@ -5,8 +5,10 @@ import com.udea.masters.entities.TipoRecurso;
 import com.udea.masters.exceptions.ReglaNegocioException;
 import com.udea.masters.util.TextoNormalizador;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.math.BigInteger;
+import java.util.Optional;
 
 /**
  * Reglas de los datos de un recurso físico. Devuelve los valores ya limpios, listos para guardar.
@@ -30,20 +32,19 @@ public class RecursoValidator {
     }
 
     public DatosRecurso validar(RecursoCreateRequest request) {
-        if (request == null) {
-            throw new ReglaNegocioException(MSG_NOMBRE_OBLIGATORIO);
-        }
-        String nombre = validarNombre(request.getNombre());
+        String nombre = validarNombre(Optional.ofNullable(request).map(RecursoCreateRequest::getNombre).orElse(null));
+        TipoRecurso tipo = TipoRecurso.desdeNombre(TextoNormalizador.normalizar(request.getTipo()))
+                .orElseThrow(() -> new ReglaNegocioException(MSG_TIPO_INVALIDO));
         return new DatosRecurso(
                 nombre,
                 TextoNormalizador.normalizar(nombre),
-                validarTipo(request.getTipo()),
+                tipo,
                 validarCantidad(request.getCantidad()),
                 validarDescripcion(request.getDescripcion()));
     }
 
     private String validarNombre(String nombre) {
-        if (nombre == null || nombre.isBlank()) {
+        if (!StringUtils.hasText(nombre)) {
             throw new ReglaNegocioException(MSG_NOMBRE_OBLIGATORIO);
         }
         String limpio = nombre.trim().replaceAll("\\s+", " ");
@@ -51,11 +52,6 @@ public class RecursoValidator {
             throw new ReglaNegocioException(MSG_NOMBRE_LARGO);
         }
         return limpio;
-    }
-
-    private TipoRecurso validarTipo(String tipo) {
-        return TipoRecurso.desdeNombre(TextoNormalizador.normalizar(tipo))
-                .orElseThrow(() -> new ReglaNegocioException(MSG_TIPO_INVALIDO));
     }
 
     /**
@@ -78,7 +74,7 @@ public class RecursoValidator {
     }
 
     private String validarDescripcion(String descripcion) {
-        if (descripcion == null || descripcion.isBlank()) {
+        if (!StringUtils.hasText(descripcion)) {
             return null;
         }
         String limpia = descripcion.trim();

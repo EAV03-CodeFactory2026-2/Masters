@@ -14,9 +14,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -35,16 +38,19 @@ public class RegistroService implements IRegistroService {
     @Override
     @Transactional
     public RegistroResponse registrar(RegistroUsuarioRequest request) {
-        if (request == null || request.getRol() == null || request.getRol().trim().isEmpty()) {
+        String rolSolicitado = Optional.ofNullable(request)
+                .map(RegistroUsuarioRequest::getRol)
+                .orElse("");
+        if (!StringUtils.hasText(rolSolicitado)) {
             throw new ReglaNegocioException("Debes indicar el rol con el que te registras.");
         }
 
         IRegistroRolStrategy strategy = strategies.stream()
-                .filter(s -> s.soporta(request.getRol()))
+                .filter(s -> s.soporta(rolSolicitado))
                 .findFirst()
                 .orElseThrow(() -> new ReglaNegocioException("Debes indicar el rol con el que te registras."));
 
-        if (request.getCorreo() == null || request.getCorreo().trim().isEmpty()) {
+        if (!StringUtils.hasText(request.getCorreo())) {
             throw new ReglaNegocioException("El correo es obligatorio");
         }
 
@@ -52,7 +58,7 @@ public class RegistroService implements IRegistroService {
             throw new RecursoDuplicadoException("Ya existe una cuenta con este correo. Inicia sesión y agrega el rol desde Mi cuenta.");
         }
 
-        if (request.getContrasena() == null || !PASSWORD_PATTERN.matcher(request.getContrasena()).matches()) {
+        if (!PASSWORD_PATTERN.matcher(Objects.requireNonNullElse(request.getContrasena(), "")).matches()) {
             throw new ReglaNegocioException("La contraseña debe tener entre 8 y 64 caracteres, una mayúscula, una minúscula, un número y un carácter especial.");
         }
 
@@ -62,10 +68,10 @@ public class RegistroService implements IRegistroService {
                 .orElseGet(() -> rolRepository.save(Rol.builder().nombreRol(strategy.getNombreRol()).build()));
 
         Usuario usuario = Usuario.builder()
-                .nombre(request.getNombre() != null ? request.getNombre().trim() : "")
-                .apellido(request.getApellido() != null ? request.getApellido().trim() : "")
+                .nombre(Objects.requireNonNullElse(request.getNombre(), "").trim())
+                .apellido(Objects.requireNonNullElse(request.getApellido(), "").trim())
                 .correo(request.getCorreo().trim().toLowerCase())
-                .telefono(request.getTelefono() != null ? request.getTelefono().trim() : "")
+                .telefono(Objects.requireNonNullElse(request.getTelefono(), "").trim())
                 .contrasena(passwordEncoder.encode(request.getContrasena()))
                 .estado("Activo")
                 .roles(new HashSet<>(Set.of(rol)))

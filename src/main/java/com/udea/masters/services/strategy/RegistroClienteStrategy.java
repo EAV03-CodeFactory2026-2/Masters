@@ -7,6 +7,9 @@ import com.udea.masters.exceptions.ReglaNegocioException;
 import com.udea.masters.repositories.PerfilClienteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -16,7 +19,7 @@ public class RegistroClienteStrategy implements IRegistroRolStrategy {
 
     @Override
     public boolean soporta(String rol) {
-        return rol != null && "cliente".equalsIgnoreCase(rol.trim());
+        return "cliente".equalsIgnoreCase(Objects.requireNonNullElse(rol, "").trim());
     }
 
     @Override
@@ -26,13 +29,13 @@ public class RegistroClienteStrategy implements IRegistroRolStrategy {
 
     @Override
     public void validar(RegistroUsuarioRequest request) {
-        if (request.getNombre() == null || request.getNombre().trim().isEmpty()) {
+        if (!StringUtils.hasText(request.getNombre())) {
             throw new ReglaNegocioException("Nombres es obligatorio");
         }
-        if (request.getApellido() == null || request.getApellido().trim().isEmpty()) {
+        if (!StringUtils.hasText(request.getApellido())) {
             throw new ReglaNegocioException("Apellidos es obligatorio");
         }
-        if (request.getTelefono() == null || request.getTelefono().trim().isEmpty()) {
+        if (!StringUtils.hasText(request.getTelefono())) {
             throw new ReglaNegocioException("Teléfono de contacto es obligatorio");
         }
         if (!request.getTelefono().trim().matches("^\\d{7,15}$")) {
