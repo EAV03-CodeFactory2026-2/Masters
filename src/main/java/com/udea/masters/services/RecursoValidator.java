@@ -5,8 +5,11 @@ import com.udea.masters.entities.TipoRecurso;
 import com.udea.masters.exceptions.ReglaNegocioException;
 import com.udea.masters.util.TextoNormalizador;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.math.BigInteger;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Reglas de los datos de un recurso físico. Devuelve los valores ya limpios, listos para guardar.
@@ -20,8 +23,8 @@ public class RecursoValidator {
     public static final String MSG_TIPO_INVALIDO = "El tipo del recurso debe ser Espacio o Equipo.";
     public static final String MSG_DESCRIPCION_LARGA = "La descripción no puede exceder los 500 caracteres.";
 
-    private static final BigInteger CANTIDAD_MINIMA = BigInteger.ONE;
-    private static final BigInteger CANTIDAD_MAXIMA = BigInteger.valueOf(999);
+    private static final Set<Class<?>> TIPOS_ENTEROS = Set.of(
+            Integer.class, Long.class, Short.class, BigInteger.class, String.class);
     private static final int NOMBRE_MAX = 100;
     private static final int DESCRIPCION_MAX = 500;
 
@@ -30,61 +33,39 @@ public class RecursoValidator {
     }
 
     public DatosRecurso validar(RecursoCreateRequest request) {
-        if (request == null) {
+        String nombreRaw = Optional.ofNullable(request).map(RecursoCreateRequest::getNombre).orElse(null);
+        if (!StringUtils.hasText(nombreRaw)) {
             throw new ReglaNegocioException(MSG_NOMBRE_OBLIGATORIO);
         }
-        String nombre = validarNombre(request.getNombre());
+        String nombre = nombreRaw.trim().replaceAll("\\s+", " ");
+        if (nombre.length() > NOMBRE_MAX) {
+            throw new ReglaNegocioException(MSG_NOMBRE_LARGO);
+        }
+
+        TipoRecurso tipo = TipoRecurso.desdeNombre(TextoNormalizador.normalizar(request.getTipo()))
+                .orElseThrow(() -> new ReglaNegocioException(MSG_TIPO_INVALIDO));
+
+        Object cantidadObj = request.getCantidad();
+        String cantidadTexto = TIPOS_ENTEROS.contains(Optional.ofNullable(cantidadObj).map(Object::getClass).orElse(Void.class))
+                ? cantidadObj.toString().trim()
+                : "";
+        if (!cantidadTexto.matches("\\+?0*[1-9]\\d{0,2}")) {
+            throw new ReglaNegocioException(MSG_CANTIDAD_INVALIDA);
+        }
+
+        String descripcion = Optional.ofNullable(request.getDescripcion())
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .orElse(null);
+        if (descripcion != null && descripcion.length() > DESCRIPCION_MAX) {
+            throw new ReglaNegocioException(MSG_DESCRIPCION_LARGA);
+        }
+
         return new DatosRecurso(
                 nombre,
                 TextoNormalizador.normalizar(nombre),
-                validarTipo(request.getTipo()),
-                validarCantidad(request.getCantidad()),
-                validarDescripcion(request.getDescripcion()));
-    }
-
-    private String validarNombre(String nombre) {
-        if (nombre == null || nombre.isBlank()) {
-            throw new ReglaNegocioException(MSG_NOMBRE_OBLIGATORIO);
-        }
-        String limpio = nombre.trim().replaceAll("\\s+", " ");
-        if (limpio.length() > NOMBRE_MAX) {
-            throw new ReglaNegocioException(MSG_NOMBRE_LARGO);
-        }
-        return limpio;
-    }
-
-    private TipoRecurso validarTipo(String tipo) {
-        return TipoRecurso.desdeNombre(TextoNormalizador.normalizar(tipo))
-                .orElseThrow(() -> new ReglaNegocioException(MSG_TIPO_INVALIDO));
-    }
-
-    /**
-     * Acepta un entero JSON (3) o un texto con solo dígitos ("3").
-     * Rechaza decimales (2.5), texto no numérico ("abc"), vacío o nulo, y valores fuera de 1..999.
-     */
-    private Integer validarCantidad(Object cantidad) {
-        BigInteger valor = switch (cantidad) {
-            case Integer i -> BigInteger.valueOf(i);
-            case Long l -> BigInteger.valueOf(l);
-            case Short s -> BigInteger.valueOf(s);
-            case BigInteger b -> b;
-            case String s when s.trim().matches("[+-]?\\d+") -> new BigInteger(s.trim());
-            case null, default -> throw new ReglaNegocioException(MSG_CANTIDAD_INVALIDA);
-        };
-        if (valor.compareTo(CANTIDAD_MINIMA) < 0 || valor.compareTo(CANTIDAD_MAXIMA) > 0) {
-            throw new ReglaNegocioException(MSG_CANTIDAD_INVALIDA);
-        }
-        return valor.intValue();
-    }
-
-    private String validarDescripcion(String descripcion) {
-        if (descripcion == null || descripcion.isBlank()) {
-            return null;
-        }
-        String limpia = descripcion.trim();
-        if (limpia.length() > DESCRIPCION_MAX) {
-            throw new ReglaNegocioException(MSG_DESCRIPCION_LARGA);
-        }
-        return limpia;
+                tipo,
+                Integer.valueOf(cantidadTexto),
+                descripcion);
     }
 }

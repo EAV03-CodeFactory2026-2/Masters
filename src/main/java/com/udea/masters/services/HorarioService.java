@@ -51,7 +51,11 @@ public class HorarioService implements IHorarioService {
         List<BloqueHorario> bloques = horarioValidator.validar(request);
 
         HorarioProveedor horario = horarioRepository.findByProveedorUsuarioId(proveedorId)
-                .orElseGet(() -> HorarioProveedor.builder().proveedor(buscarPerfil(proveedorId)).build());
+                .orElseGet(() -> {
+                    PerfilProveedor perfil = perfilProveedorRepository.findById(proveedorId)
+                            .orElseThrow(() -> new RecursoNoEncontradoException(MSG_SIN_PERFIL));
+                    return HorarioProveedor.builder().proveedor(perfil).build();
+                });
         horario.reemplazarBloques(bloques, OffsetDateTime.now(clock));
 
         return HorarioSemanalResponse.desde(horarioRepository.save(horario), MSG_GUARDADO);
@@ -67,10 +71,5 @@ public class HorarioService implements IHorarioService {
             throw new RecursoNoEncontradoException(MSG_SIN_PERFIL);
         }
         return usuarioId;
-    }
-
-    private PerfilProveedor buscarPerfil(Integer proveedorId) {
-        return perfilProveedorRepository.findById(proveedorId)
-                .orElseThrow(() -> new RecursoNoEncontradoException(MSG_SIN_PERFIL));
     }
 }

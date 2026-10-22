@@ -13,6 +13,7 @@ import com.udea.masters.repositories.PerfilProveedorRepository;
 import com.udea.masters.repositories.TipoDocumentoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Optional;
 
@@ -40,23 +41,18 @@ public class RolPerfilPropietarioStrategy implements IRolPerfilStrategy {
         String numeroDoc = request.getNumeroDocumento();
 
         // Si no se proporcionaron datos de documento, reutilizar los del perfil Proveedor si ya existe
-        if ((tipoDocCodigo == null || tipoDocCodigo.trim().isEmpty()) || (numeroDoc == null || numeroDoc.trim().isEmpty())) {
-            Optional<PerfilProveedor> perfilProveedorOpt = perfilProveedorRepository.findById(usuario.getIdUsuario());
-            if (perfilProveedorOpt.isPresent()) {
-                PerfilProveedor prov = perfilProveedorOpt.get();
-                if ((tipoDocCodigo == null || tipoDocCodigo.trim().isEmpty()) && prov.getTipoDocumento() != null) {
-                    tipoDocCodigo = prov.getTipoDocumento().getCodigo();
-                }
-                if (numeroDoc == null || numeroDoc.trim().isEmpty()) {
-                    numeroDoc = prov.getNumeroDocumento();
-                }
-            }
-        }
+        Optional<PerfilProveedor> prov = (!StringUtils.hasText(tipoDocCodigo) || !StringUtils.hasText(numeroDoc))
+                ? perfilProveedorRepository.findById(usuario.getIdUsuario())
+                : Optional.empty();
+        tipoDocCodigo = StringUtils.hasText(tipoDocCodigo) ? tipoDocCodigo
+                : prov.map(PerfilProveedor::getTipoDocumento).map(TipoDocumento::getCodigo).orElse(null);
+        numeroDoc = StringUtils.hasText(numeroDoc) ? numeroDoc
+                : prov.map(PerfilProveedor::getNumeroDocumento).orElse(null);
 
-        if (tipoDocCodigo == null || tipoDocCodigo.trim().isEmpty()) {
+        if (!StringUtils.hasText(tipoDocCodigo)) {
             throw new ReglaNegocioException("Tipo de documento es obligatorio");
         }
-        if (numeroDoc == null || numeroDoc.trim().isEmpty()) {
+        if (!StringUtils.hasText(numeroDoc)) {
             throw new ReglaNegocioException("Número de documento es obligatorio");
         }
 

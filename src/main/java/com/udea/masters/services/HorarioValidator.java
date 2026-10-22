@@ -7,6 +7,7 @@ import com.udea.masters.entities.BloqueHorario;
 import com.udea.masters.entities.DiaSemana;
 import com.udea.masters.exceptions.HorarioInvalidoException;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import java.text.Normalizer;
 import java.time.LocalTime;
@@ -48,14 +49,12 @@ public class HorarioValidator {
     /** Días activos ordenados de lunes a domingo; los inactivos se descartan con sus bloques. */
     private Map<DiaSemana, DiaHorarioRequest> diasActivosEnOrden(HorarioSemanalRequest request) {
         Map<DiaSemana, DiaHorarioRequest> activos = new EnumMap<>(DiaSemana.class);
-        if (request == null || request.getDias() == null) {
-            return activos;
-        }
+        List<DiaHorarioRequest> dias = Optional.ofNullable(request)
+                .map(HorarioSemanalRequest::getDias)
+                .orElse(List.of());
+
         Set<DiaSemana> vistos = EnumSet.noneOf(DiaSemana.class);
-        for (DiaHorarioRequest diaRequest : request.getDias()) {
-            if (diaRequest == null) {
-                continue;
-            }
+        for (DiaHorarioRequest diaRequest : dias.stream().filter(Objects::nonNull).toList()) {
             DiaSemana dia = parsearDia(diaRequest.getDia());
             if (!vistos.add(dia)) {
                 throw new HorarioInvalidoException(String.format(MSG_DIA_REPETIDO, dia.getNombre()), dia.name(), null);
@@ -68,33 +67,29 @@ public class HorarioValidator {
     }
 
     private boolean estaActivo(DiaHorarioRequest diaRequest) {
-        if (diaRequest.getActivo() != null) {
-            return diaRequest.getActivo();
-        }
-        return diaRequest.getBloques() != null && !diaRequest.getBloques().isEmpty();
+        return Objects.requireNonNullElse(diaRequest.getActivo(), !CollectionUtils.isEmpty(diaRequest.getBloques()));
     }
 
     private List<BloqueHorario> validarDia(DiaSemana dia, List<BloqueHorarioDTO> bloques) {
-        if (bloques == null || bloques.isEmpty()) {
+        if (CollectionUtils.isEmpty(bloques)) {
             throw new HorarioInvalidoException(String.format(MSG_DIA_SIN_BLOQUES, dia.getNombre()), dia.name(), null);
         }
         if (bloques.size() > MAX_BLOQUES_POR_DIA) {
             throw new HorarioInvalidoException(MSG_MAX_BLOQUES, dia.name(), null);
         }
 
-        List<BloqueHorario> validados = new ArrayList<>();
-        for (BloqueHorarioDTO bloque : bloques) {
-            validados.add(validarBloque(dia, bloque));
-        }
+        List<BloqueHorario> validados = bloques.stream()
+                .map(bloque -> validarBloque(dia, bloque))
+                .toList();
         validarQueNoSeSuperpongan(dia, validados);
         return validados;
     }
 
     private BloqueHorario validarBloque(DiaSemana dia, BloqueHorarioDTO bloque) {
-        String texto = bloque == null ? "" : bloque.comoTexto();
         if (bloque == null) {
-            throw new HorarioInvalidoException(MSG_FORMATO_HORA, dia.name(), texto);
+            throw new HorarioInvalidoException(MSG_FORMATO_HORA, dia.name(), "");
         }
+        String texto = bloque.comoTexto();
         LocalTime inicio = parsearHora(bloque.getHoraInicio(), dia, texto);
         LocalTime fin = parsearHora(bloque.getHoraFin(), dia, texto);
         if (!fin.isAfter(inicio)) {
@@ -104,10 +99,11 @@ public class HorarioValidator {
     }
 
     private LocalTime parsearHora(String hora, DiaSemana dia, String bloque) {
-        if (hora == null || !FORMATO_HORA.matcher(hora.trim()).matches()) {
+        String limpia = Objects.requireNonNullElse(hora, "").trim();
+        if (!FORMATO_HORA.matcher(limpia).matches()) {
             throw new HorarioInvalidoException(MSG_FORMATO_HORA, dia.name(), bloque);
         }
-        LocalTime valor = LocalTime.parse(hora.trim());
+        LocalTime valor = LocalTime.parse(limpia);
         if (valor.getMinute() % INTERVALO_MINUTOS != 0) {
             throw new HorarioInvalidoException(MSG_INTERVALO, dia.name(), bloque);
         }
@@ -130,16 +126,11 @@ public class HorarioValidator {
     }
 
     private DiaSemana parsearDia(String dia) {
-        if (dia != null) {
-            String normalizado = Normalizer.normalize(dia.trim(), Normalizer.Form.NFD)
-                    .replaceAll("\\p{M}", "")
-                    .toUpperCase(Locale.ROOT);
-            for (DiaSemana valor : DiaSemana.values()) {
-                if (valor.name().equals(normalizado)) {
-                    return valor;
-                }
-            }
-        }
-        throw new HorarioInvalidoException(String.format(MSG_DIA_INVALIDO, dia), null, null);
+        String normalizado = Normalizer.normalize(Objects.requireNonNullElse(dia, "").trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return Arrays.stream(DiaSemana.values())
+                .filter(valor -> valor.name().equalsIgnoreCase(normalizado))
+                .findFirst()
+                .orElseThrow(() -> new HorarioInvalidoException(String.format(MSG_DIA_INVALIDO, dia), null, null));
     }
 }

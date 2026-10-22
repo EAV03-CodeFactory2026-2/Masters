@@ -37,11 +37,15 @@ public class ProveedorService implements IProveedorService {
     @Transactional(readOnly = true)
     public DirectorioProveedoresResponse consultarDirectorio(String criterio, Integer pagina) {
         String criterioLimpio = validarCriterio(criterio);
-        int numeroPagina = validarPagina(pagina);
+        int numeroPagina = Objects.requireNonNullElse(pagina, 1);
+        if (numeroPagina < 1) {
+            throw new ReglaNegocioException(MSG_PAGINA_INVALIDA);
+        }
 
         String criterioMinusculas = criterioLimpio.toLowerCase(Locale.ROOT);
+        String patronLike = "%" + criterioMinusculas.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
         Page<PerfilProveedor> resultado = perfilProveedorRepository.buscarEnDirectorio(
-                "%" + escaparLike(criterioMinusculas) + "%",
+                patronLike,
                 criterioMinusculas,
                 TipoRol.PROVEEDOR.getNombre(),
                 PageRequest.of(numeroPagina - 1, TAMANO_PAGINA));
@@ -61,7 +65,7 @@ public class ProveedorService implements IProveedorService {
     }
 
     private String validarCriterio(String criterio) {
-        String limpio = criterio == null ? "" : criterio.trim().replaceAll("\\s+", " ");
+        String limpio = Objects.requireNonNullElse(criterio, "").trim().replaceAll("\\s+", " ");
         if (limpio.length() < MIN_CARACTERES) {
             throw new ReglaNegocioException(MSG_MIN_CARACTERES);
         }
@@ -69,21 +73,6 @@ public class ProveedorService implements IProveedorService {
             throw new ReglaNegocioException(MSG_MAX_CARACTERES);
         }
         return limpio;
-    }
-
-    private int validarPagina(Integer pagina) {
-        if (pagina == null) {
-            return 1;
-        }
-        if (pagina < 1) {
-            throw new ReglaNegocioException(MSG_PAGINA_INVALIDA);
-        }
-        return pagina;
-    }
-
-    /** Evita que %, _ o ! escritos por el usuario funcionen como comodines del LIKE. */
-    private String escaparLike(String texto) {
-        return texto.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }
 
     private ProveedorDirectorioResponse mapearADirectorioResponse(PerfilProveedor perfil, Integer usuarioActualId) {

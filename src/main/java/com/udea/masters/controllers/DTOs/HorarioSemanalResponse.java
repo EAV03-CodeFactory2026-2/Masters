@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Horario semanal: siempre trae los 7 días, de lunes a domingo.
@@ -35,13 +36,13 @@ public class HorarioSemanalResponse {
     private List<DiaHorarioResponse> dias;
 
     public static HorarioSemanalResponse desde(HorarioProveedor horario, String mensaje) {
-        List<BloqueHorario> bloques = horario == null ? List.of() : horario.getBloques();
+        List<BloqueHorario> bloques = Optional.ofNullable(horario).map(HorarioProveedor::getBloques).orElse(List.of());
         List<DiaHorarioResponse> dias = Arrays.stream(DiaSemana.values())
                 .map(dia -> diaDesde(dia, bloques))
                 .toList();
         return HorarioSemanalResponse.builder()
                 .mensaje(mensaje)
-                .fechaActualizacion(horario == null ? null : horario.getFechaActualizacion())
+                .fechaActualizacion(Optional.ofNullable(horario).map(HorarioProveedor::getFechaActualizacion).orElse(null))
                 .dias(dias)
                 .build();
     }
