@@ -15,14 +15,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UsuarioService implements IUsuarioService {
+
+    private static final Set<String> ROLES_VISIBLES = Set.of(
+            TipoRol.CLIENTE.getNombre().toUpperCase(),
+            TipoRol.PROVEEDOR.getNombre().toUpperCase());
 
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
@@ -32,8 +39,7 @@ public class UsuarioService implements IUsuarioService {
     @Override
     @Transactional(readOnly = true)
     public UsuarioResponse obtenerUsuarioPorId(Integer idUsuario) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado con ID: " + idUsuario));
+        Usuario usuario = buscarUsuario(idUsuario);
 
         Integer currentUserId = authenticationFacade.getAuthenticatedUserId();
         if (!esUsuarioVisibleParaConsulta(usuario, currentUserId)) {
@@ -51,41 +57,39 @@ public class UsuarioService implements IUsuarioService {
         return usuarioRepository.findAll().stream()
                 .filter(u -> esUsuarioVisibleParaConsulta(u, currentUserId))
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<UsuarioResponse> listarPorRol(String nombreRol) {
         Integer currentUserId = authenticationFacade.getAuthenticatedUserId();
+        boolean filtroPropietario = TipoRol.PROPIETARIO.getNombre().equalsIgnoreCase(nombreRol);
 
         return usuarioRepository.findByRolesNombreRol(nombreRol).stream()
-                .filter(u -> {
-                    if (TipoRol.PROPIETARIO.getNombre().equalsIgnoreCase(nombreRol)) {
-                        return currentUserId != null && u.getIdUsuario() != null && u.getIdUsuario().equals(currentUserId);
-                    }
-                    return esUsuarioVisibleParaConsulta(u, currentUserId);
-                })
+                .filter(u -> filtroPropietario
+                        ? Objects.equals(currentUserId, u.getIdUsuario())
+                        : esUsuarioVisibleParaConsulta(u, currentUserId))
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
     @Transactional
     public void asignarRolAUsuario(Integer idUsuario, RolAsignacionRequest request) {
-        if (request == null || request.getNombreRol() == null || request.getNombreRol().trim().isEmpty()) {
+        String nombreRol = Optional.ofNullable(request)
+                .map(RolAsignacionRequest::getNombreRol)
+                .orElse("");
+        if (!StringUtils.hasText(nombreRol)) {
             throw new ReglaNegocioException("Debes indicar el rol a asignar.");
         }
 
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado con ID: " + idUsuario));
-
-        String nombreRol = request.getNombreRol().trim();
-        Rol rol = rolRepository.findByNombreRolIgnoreCase(nombreRol)
-                .orElseThrow(() -> new ReglaNegocioException("Rol no encontrado con nombre: " + nombreRol));
+        Usuario usuario = buscarUsuario(idUsuario);
+        Rol rol = buscarRol(nombreRol.trim());
 
         boolean yaTieneRol = usuario.getRoles().stream()
-                .anyMatch(r -> r.getNombreRol().equalsIgnoreCase(rol.getNombreRol()));
+                .map(Rol::getNombreRol)
+                .anyMatch(rol.getNombreRol()::equalsIgnoreCase);
         if (yaTieneRol) {
             throw new ReglaNegocioException("El usuario ya tiene asignado el rol " + rol.getNombreRol() + ".");
         }
@@ -108,14 +112,12 @@ public class UsuarioService implements IUsuarioService {
     @Override
     @Transactional
     public void removerRolDeUsuario(Integer idUsuario, String nombreRol) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado con ID: " + idUsuario));
-
-        Rol rol = rolRepository.findByNombreRolIgnoreCase(nombreRol)
-                .orElseThrow(() -> new ReglaNegocioException("Rol no encontrado con nombre: " + nombreRol));
+        Usuario usuario = buscarUsuario(idUsuario);
+        Rol rol = buscarRol(nombreRol);
 
         boolean tieneRol = usuario.getRoles().stream()
-                .anyMatch(r -> r.getNombreRol().equalsIgnoreCase(rol.getNombreRol()));
+                .map(Rol::getNombreRol)
+                .anyMatch(rol.getNombreRol()::equalsIgnoreCase);
         if (!tieneRol) {
             throw new ReglaNegocioException("El usuario no tiene asignado el rol " + rol.getNombreRol() + ".");
         }
@@ -133,10 +135,20 @@ public class UsuarioService implements IUsuarioService {
         usuarioRepository.save(usuario);
     }
 
+    private Usuario buscarUsuario(Integer idUsuario) {
+        return usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado con ID: " + idUsuario));
+    }
+
+    private Rol buscarRol(String nombreRol) {
+        return rolRepository.findByNombreRolIgnoreCase(nombreRol)
+                .orElseThrow(() -> new ReglaNegocioException("Rol no encontrado con nombre: " + nombreRol));
+    }
+
     private UsuarioResponse mapToResponse(Usuario usuario) {
-        Set<String> nombresRoles = usuario.getRoles() != null
-                ? usuario.getRoles().stream().map(Rol::getNombreRol).collect(Collectors.toSet())
-                : Set.of();
+        Set<String> nombresRoles = Objects.requireNonNullElse(usuario.getRoles(), Set.<Rol>of()).stream()
+                .map(Rol::getNombreRol)
+                .collect(Collectors.toSet());
 
         return UsuarioResponse.builder()
                 .idUsuario(usuario.getIdUsuario())
@@ -151,14 +163,12 @@ public class UsuarioService implements IUsuarioService {
     }
 
     private boolean esUsuarioVisibleParaConsulta(Usuario usuario, Integer currentUserId) {
-        if (currentUserId == null) {
-            return true;
-        }
-        if (usuario.getIdUsuario() != null && usuario.getIdUsuario().equals(currentUserId)) {
-            return true;
-        }
-        return usuario.getRoles() != null && usuario.getRoles().stream()
-                .anyMatch(r -> TipoRol.CLIENTE.getNombre().equalsIgnoreCase(r.getNombreRol())
-                        || TipoRol.PROVEEDOR.getNombre().equalsIgnoreCase(r.getNombreRol()));
+        return currentUserId == null
+                || currentUserId.equals(usuario.getIdUsuario())
+                || Objects.requireNonNullElse(usuario.getRoles(), Set.<Rol>of()).stream()
+                        .map(Rol::getNombreRol)
+                        .filter(Objects::nonNull)
+                        .map(String::toUpperCase)
+                        .anyMatch(ROLES_VISIBLES::contains);
     }
 }

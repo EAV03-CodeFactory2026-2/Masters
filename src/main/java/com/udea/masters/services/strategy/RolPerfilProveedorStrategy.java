@@ -13,7 +13,9 @@ import com.udea.masters.repositories.PerfilProveedorRepository;
 import com.udea.masters.repositories.TipoDocumentoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+import java.util.Objects;
 import java.util.Optional;
 
 @Component
@@ -40,23 +42,18 @@ public class RolPerfilProveedorStrategy implements IRolPerfilStrategy {
         String numeroDoc = request.getNumeroDocumento();
 
         // Si no se proporcionaron datos de documento, reutilizar los del perfil Propietario si ya existe
-        if ((tipoDocCodigo == null || tipoDocCodigo.trim().isEmpty()) || (numeroDoc == null || numeroDoc.trim().isEmpty())) {
-            Optional<PerfilPropietario> perfilPropietarioOpt = perfilPropietarioRepository.findById(usuario.getIdUsuario());
-            if (perfilPropietarioOpt.isPresent()) {
-                PerfilPropietario prop = perfilPropietarioOpt.get();
-                if ((tipoDocCodigo == null || tipoDocCodigo.trim().isEmpty()) && prop.getTipoDocumento() != null) {
-                    tipoDocCodigo = prop.getTipoDocumento().getCodigo();
-                }
-                if (numeroDoc == null || numeroDoc.trim().isEmpty()) {
-                    numeroDoc = prop.getNumeroDocumento();
-                }
-            }
-        }
+        Optional<PerfilPropietario> prop = (!StringUtils.hasText(tipoDocCodigo) || !StringUtils.hasText(numeroDoc))
+                ? perfilPropietarioRepository.findById(usuario.getIdUsuario())
+                : Optional.empty();
+        tipoDocCodigo = StringUtils.hasText(tipoDocCodigo) ? tipoDocCodigo
+                : prop.map(PerfilPropietario::getTipoDocumento).map(TipoDocumento::getCodigo).orElse(null);
+        numeroDoc = StringUtils.hasText(numeroDoc) ? numeroDoc
+                : prop.map(PerfilPropietario::getNumeroDocumento).orElse(null);
 
-        if (tipoDocCodigo == null || tipoDocCodigo.trim().isEmpty()) {
+        if (!StringUtils.hasText(tipoDocCodigo)) {
             throw new ReglaNegocioException("Tipo de documento es obligatorio");
         }
-        if (numeroDoc == null || numeroDoc.trim().isEmpty()) {
+        if (!StringUtils.hasText(numeroDoc)) {
             throw new ReglaNegocioException("Número de documento es obligatorio");
         }
 
@@ -68,11 +65,12 @@ public class RolPerfilProveedorStrategy implements IRolPerfilStrategy {
             throw new RecursoDuplicadoException("Ya existe un proveedor registrado con este documento.");
         }
 
-        if (request.getEspecialidad() == null || request.getEspecialidad().trim().length() < 2 || request.getEspecialidad().trim().length() > 100) {
+        int largoEsp = Objects.requireNonNullElse(request.getEspecialidad(), "").trim().length();
+        if (largoEsp < 2 || largoEsp > 100) {
             throw new ReglaNegocioException("La especialidad debe tener entre 2 y 100 caracteres.");
         }
 
-        if (request.getDescripcionProfesional() != null && request.getDescripcionProfesional().trim().length() > 500) {
+        if (Objects.requireNonNullElse(request.getDescripcionProfesional(), "").trim().length() > 500) {
             throw new ReglaNegocioException("La descripción profesional no puede superar los 500 caracteres.");
         }
 
@@ -81,7 +79,7 @@ public class RolPerfilProveedorStrategy implements IRolPerfilStrategy {
                 .tipoDocumento(tipoDoc)
                 .numeroDocumento(numeroDoc.trim())
                 .especialidad(request.getEspecialidad().trim())
-                .descripcionProfesional(request.getDescripcionProfesional() != null ? request.getDescripcionProfesional().trim() : null)
+                .descripcionProfesional(Optional.ofNullable(request.getDescripcionProfesional()).map(String::trim).orElse(null))
                 .build();
         perfilProveedorRepository.save(perfil);
     }

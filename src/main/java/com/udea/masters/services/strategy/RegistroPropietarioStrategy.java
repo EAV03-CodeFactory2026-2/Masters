@@ -10,6 +10,9 @@ import com.udea.masters.repositories.PerfilPropietarioRepository;
 import com.udea.masters.repositories.TipoDocumentoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -20,7 +23,7 @@ public class RegistroPropietarioStrategy implements IRegistroRolStrategy {
 
     @Override
     public boolean soporta(String rol) {
-        return rol != null && "propietario".equalsIgnoreCase(rol.trim());
+        return "propietario".equalsIgnoreCase(Objects.requireNonNullElse(rol, "").trim());
     }
 
     @Override
@@ -30,8 +33,8 @@ public class RegistroPropietarioStrategy implements IRegistroRolStrategy {
 
     @Override
     public void validar(RegistroUsuarioRequest request) {
-        boolean faltaNombre = request.getNombre() == null || request.getNombre().trim().isEmpty();
-        boolean faltaDocumento = request.getNumeroDocumento() == null || request.getNumeroDocumento().trim().isEmpty();
+        boolean faltaNombre = !StringUtils.hasText(request.getNombre());
+        boolean faltaDocumento = !StringUtils.hasText(request.getNumeroDocumento());
 
         if (faltaNombre && faltaDocumento) {
             throw new ReglaNegocioException("Nombres y Número de documento son obligatorios");
@@ -47,18 +50,18 @@ public class RegistroPropietarioStrategy implements IRegistroRolStrategy {
             throw new ReglaNegocioException("Los nombres solo deben contener letras y tener entre 2 y 100 caracteres.");
         }
 
-        if (request.getApellido() == null || request.getApellido().trim().isEmpty()) {
+        if (!StringUtils.hasText(request.getApellido())) {
             throw new ReglaNegocioException("Apellidos es obligatorio");
         }
 
-        if (request.getTipoDocumento() == null || request.getTipoDocumento().trim().isEmpty()) {
+        if (!StringUtils.hasText(request.getTipoDocumento())) {
             throw new ReglaNegocioException("Tipo de documento es obligatorio");
         }
 
         TipoDocumento tipoDoc = tipoDocumentoRepository.findByCodigoIgnoreCase(request.getTipoDocumento().trim())
                 .orElseThrow(() -> new ReglaNegocioException("Tipo de documento no válido: " + request.getTipoDocumento()));
 
-        if (request.getTelefono() == null || !request.getTelefono().trim().matches("^\\d{7,15}$")) {
+        if (!Objects.requireNonNullElse(request.getTelefono(), "").trim().matches("^\\d{7,15}$")) {
             throw new ReglaNegocioException("Ingresa un teléfono válido de 7 a 15 dígitos.");
         }
 
