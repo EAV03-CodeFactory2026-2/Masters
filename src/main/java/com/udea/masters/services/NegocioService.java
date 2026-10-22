@@ -6,11 +6,13 @@ import com.udea.masters.exceptions.RecursoDuplicadoException;
 import com.udea.masters.repositories.NegocioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -65,12 +67,11 @@ public class NegocioService implements INegocioService {
     }
 
     private boolean tieneRolPropietarioEnContexto() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getAuthorities() == null) {
-            return false;
-        }
-        return auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_PROPIETARIO")
-                        || a.getAuthority().equalsIgnoreCase("PROPIETARIO"));
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .map(Authentication::getAuthorities)
+                .orElse(List.of())
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> "ROLE_PROPIETARIO".equalsIgnoreCase(a) || "PROPIETARIO".equalsIgnoreCase(a));
     }
 }

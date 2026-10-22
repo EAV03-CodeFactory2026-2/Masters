@@ -10,6 +10,9 @@ import com.udea.masters.repositories.PerfilProveedorRepository;
 import com.udea.masters.repositories.TipoDocumentoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -20,7 +23,7 @@ public class RegistroProveedorStrategy implements IRegistroRolStrategy {
 
     @Override
     public boolean soporta(String rol) {
-        return rol != null && "proveedor".equalsIgnoreCase(rol.trim());
+        return "proveedor".equalsIgnoreCase(Objects.requireNonNullElse(rol, "").trim());
     }
 
     @Override
@@ -30,19 +33,19 @@ public class RegistroProveedorStrategy implements IRegistroRolStrategy {
 
     @Override
     public void validar(RegistroUsuarioRequest request) {
-        if (request.getNombre() == null || request.getNombre().trim().isEmpty()) {
+        if (!StringUtils.hasText(request.getNombre())) {
             throw new ReglaNegocioException("Nombres es obligatorio");
         }
-        if (request.getApellido() == null || request.getApellido().trim().isEmpty()) {
+        if (!StringUtils.hasText(request.getApellido())) {
             throw new ReglaNegocioException("Apellidos es obligatorio");
         }
-        if (request.getTelefono() == null || !request.getTelefono().trim().matches("^\\d{7,15}$")) {
+        if (!Objects.requireNonNullElse(request.getTelefono(), "").trim().matches("^\\d{7,15}$")) {
             throw new ReglaNegocioException("Ingresa un teléfono válido de 7 a 15 dígitos.");
         }
 
-        boolean faltaTipoDoc = request.getTipoDocumento() == null || request.getTipoDocumento().trim().isEmpty();
-        boolean faltaNumDoc = request.getNumeroDocumento() == null || request.getNumeroDocumento().trim().isEmpty();
-        boolean faltaEspecialidad = request.getEspecialidad() == null || request.getEspecialidad().trim().isEmpty();
+        boolean faltaTipoDoc = !StringUtils.hasText(request.getTipoDocumento());
+        boolean faltaNumDoc = !StringUtils.hasText(request.getNumeroDocumento());
+        boolean faltaEspecialidad = !StringUtils.hasText(request.getEspecialidad());
 
         if (faltaTipoDoc && faltaNumDoc && faltaEspecialidad) {
             throw new ReglaNegocioException("Los campos Tipo de documento, Número de documento y Especialidad son obligatorios para el rol Proveedor.");
@@ -61,11 +64,12 @@ public class RegistroProveedorStrategy implements IRegistroRolStrategy {
             throw new RecursoDuplicadoException("Ya existe un proveedor registrado con este documento.");
         }
 
-        if (request.getEspecialidad() == null || request.getEspecialidad().trim().length() < 2 || request.getEspecialidad().trim().length() > 100) {
+        int largoEsp = Objects.requireNonNullElse(request.getEspecialidad(), "").trim().length();
+        if (largoEsp < 2 || largoEsp > 100) {
             throw new ReglaNegocioException("La especialidad debe tener entre 2 y 100 caracteres.");
         }
 
-        if (request.getDescripcionProfesional() != null && request.getDescripcionProfesional().trim().length() > 500) {
+        if (Objects.requireNonNullElse(request.getDescripcionProfesional(), "").trim().length() > 500) {
             throw new ReglaNegocioException("La descripción profesional no puede superar los 500 caracteres.");
         }
     }

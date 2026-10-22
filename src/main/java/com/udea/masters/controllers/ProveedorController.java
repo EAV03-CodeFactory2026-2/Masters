@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -46,8 +47,9 @@ public class ProveedorController {
             @Parameter(description = "Índice de página base 0 (opcional)", example = "0")
             @RequestParam(required = false) Integer page
     ) {
-        String textoBusqueda = (query != null && !query.isBlank()) ? query : criterio;
-        Integer numeroPagina = pagina != null ? pagina : (page != null ? (page >= 0 ? page + 1 : page) : null);
+        String textoBusqueda = StringUtils.hasText(query) ? query : criterio;
+        Integer pageBaseUno = page != null && page >= 0 ? Integer.valueOf(page + 1) : page;
+        Integer numeroPagina = pagina != null ? pagina : pageBaseUno;
         return ResponseEntity.ok(proveedorService.consultarDirectorio(textoBusqueda, numeroPagina));
     }
 }

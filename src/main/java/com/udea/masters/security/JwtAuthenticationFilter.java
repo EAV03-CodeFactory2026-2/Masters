@@ -11,11 +11,12 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -30,9 +31,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
+        final String authHeader = Objects.requireNonNullElse(request.getHeader("Authorization"), "");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (!authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -48,14 +49,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String rolActivo = jwtService.extractRolActivo(jwt);
                     // Con un rol activo en el token, el usuario solo opera con ese rol (si realmente lo tiene).
                     // Sin el claim se conservan todos los roles, como hasta ahora.
-                    if (rolActivo != null && !rolActivo.isBlank()) {
+                    if (StringUtils.hasText(rolActivo)) {
                         roles = roles.stream()
-                                .filter(r -> r.equalsIgnoreCase(rolActivo))
-                                .collect(Collectors.toList());
+                                .filter(rolActivo::equalsIgnoreCase)
+                                .toList();
                     }
                     var authorities = roles.stream()
                             .map(r -> new SimpleGrantedAuthority("ROLE_" + r.toUpperCase()))
-                            .collect(Collectors.toList());
+                            .toList();
 
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userId,
