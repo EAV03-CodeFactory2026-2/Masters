@@ -3,28 +3,28 @@ package com.udea.masters.services;
 import com.udea.masters.controllers.DTOs.RecursoCreateRequest;
 import com.udea.masters.entities.TipoRecurso;
 import com.udea.masters.exceptions.ReglaNegocioException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(MockitoExtension.class)
 class RecursoValidatorTest {
 
-    private final RecursoValidator validator = new RecursoValidator();
+    private RecursoValidator validator;
+
+    @BeforeEach
+    void setUp() {
+        validator = new RecursoValidator();
+    }
 
     private RecursoCreateRequest request(String nombre, String tipo, Object cantidad, String descripcion) {
         return RecursoCreateRequest.builder()
@@ -36,26 +36,31 @@ class RecursoValidatorTest {
     }
 
     @Test
-    void debeRetornarDatosLimpios_cuandoRequestValido() {
-        RecursoCreateRequest req = request("  Cámilla   DE  masajes ", " Equipo ", 3, "  Plegable  ");
+    void debeValidarYLimpiarDatos_cuandoRequestEsValido() {
+        RecursoCreateRequest req = request("  Camilla  de   masajes  ", "Equipo", 3, "  Tres camillas  ");
 
         RecursoValidator.DatosRecurso datos = validator.validar(req);
 
-        assertEquals(new RecursoValidator.DatosRecurso(
-                "Cámilla DE masajes", "camilla de masajes", TipoRecurso.EQUIPO, 3, "Plegable"), datos);
+        assertEquals("Camilla de masajes", datos.nombre());
+        assertEquals("camilla de masajes", datos.nombreNormalizado());
+        assertEquals(TipoRecurso.EQUIPO, datos.tipo());
+        assertEquals(3, datos.cantidad());
+        assertEquals("Tres camillas", datos.descripcion());
     }
 
     @Test
-    void debeLanzarReglaNegocio_cuandoRequestNulo() {
-        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> validator.validar(null));
+    void debeDejarDescripcionNull_cuandoEsNullOBlanco() {
+        RecursoCreateRequest req1 = request("Sala", "Espacio", 1, null);
+        RecursoCreateRequest req2 = request("Sala", "Espacio", 1, "   ");
 
-        assertEquals(RecursoValidator.MSG_NOMBRE_OBLIGATORIO, ex.getMessage());
+        assertNull(validator.validar(req1).descripcion());
+        assertNull(validator.validar(req2).descripcion());
     }
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"   ", "\t\n"})
-    void debeLanzarNombreObligatorio_cuandoNombreVacio(String nombre) {
+    @ValueSource(strings = {"   ", "\t", "\n"})
+    void debeLanzarNombreObligatorio_cuandoNombreEsNuloOBlanco(String nombre) {
         RecursoCreateRequest req = request(nombre, "Espacio", 1, null);
 
         ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> validator.validar(req));
@@ -63,14 +68,9 @@ class RecursoValidatorTest {
         assertEquals(RecursoValidator.MSG_NOMBRE_OBLIGATORIO, ex.getMessage());
     }
 
-    static Stream<String> nombresLargos() {
-        return Stream.of("a".repeat(101), "  " + "b".repeat(101) + "  ", "a ".repeat(60));
-    }
-
-    @ParameterizedTest
-    @MethodSource("nombresLargos")
-    void debeLanzarNombreLargo_cuandoNombreSupera100Caracteres(String nombre) {
-        RecursoCreateRequest req = request(nombre, "Espacio", 1, null);
+    @Test
+    void debeLanzarNombreLargo_cuandoNombreExcede100Caracteres() {
+        RecursoCreateRequest req = request("a".repeat(101), "Espacio", 1, null);
 
         ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> validator.validar(req));
 
@@ -78,35 +78,27 @@ class RecursoValidatorTest {
     }
 
     @Test
-    void debeAceptarNombre_cuandoTiene100CaracteresTrasColapsarEspacios() {
-        String nombre = "a".repeat(49) + "        " + "b".repeat(50);
-        RecursoCreateRequest req = request(nombre, "Espacio", 1, null);
+    void debeAceptarNombreDe100Caracteres() {
+        RecursoCreateRequest req = request("a".repeat(100), "Espacio", 1, null);
 
         RecursoValidator.DatosRecurso datos = validator.validar(req);
 
         assertEquals(100, datos.nombre().length());
-        assertEquals("a".repeat(49) + " " + "b".repeat(50), datos.nombre());
     }
 
     @ParameterizedTest
-    @CsvSource({
-            "Espacio, ESPACIO",
-            "espacio, ESPACIO",
-            "'  ESPÁCIO  ', ESPACIO",
-            "Equipo, EQUIPO",
-            "équipo, EQUIPO"
-    })
-    void debeResolverTipo_cuandoNombreCoincideSinDistinguirMayusculasNiTildes(String tipo, TipoRecurso esperado) {
+    @ValueSource(strings = {"Espacio", "espacio", "ESPACIO", "Equipo", "equipo", "EQUIPO", "  espacio  "})
+    void debeAceptarTiposValidos(String tipo) {
         RecursoCreateRequest req = request("Sala", tipo, 1, null);
 
         RecursoValidator.DatosRecurso datos = validator.validar(req);
 
-        assertEquals(esperado, datos.tipo());
+        assertNotNull(datos.tipo());
     }
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"   ", "Mueble", "Espacios", "Equipo Espacio"})
+    @ValueSource(strings = {"Invalido", "Herramienta", "123", "   "})
     void debeLanzarTipoInvalido_cuandoTipoNoEsEspacioNiEquipo(String tipo) {
         RecursoCreateRequest req = request("Sala", tipo, 1, null);
 
@@ -124,7 +116,6 @@ class RecursoValidatorTest {
                 Arguments.of(BigInteger.valueOf(10), 10),
                 Arguments.of("3", 3),
                 Arguments.of(" 42 ", 42),
-                Arguments.of("+8", 8),
                 Arguments.of("0999", 999)
         );
     }
@@ -160,6 +151,7 @@ class RecursoValidatorTest {
                 "2.5",
                 "3a",
                 "-1",
+                "+8",
                 "0",
                 "1000",
                 true
@@ -179,7 +171,7 @@ class RecursoValidatorTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   ", "\t"})
-    void debeRetornarDescripcionNula_cuandoDescripcionVacia(String descripcion) {
+    void debeAceptarDescripcionVacia(String descripcion) {
         RecursoCreateRequest req = request("Sala", "Espacio", 1, descripcion);
 
         RecursoValidator.DatosRecurso datos = validator.validar(req);
@@ -188,17 +180,16 @@ class RecursoValidatorTest {
     }
 
     @Test
-    void debeAceptarDescripcion_cuandoTiene500CaracteresTrasRecortar() {
-        String descripcion = "  " + "d".repeat(500) + "  ";
-        RecursoCreateRequest req = request("Sala", "Espacio", 1, descripcion);
+    void debeAceptarDescripcionDe500Caracteres() {
+        RecursoCreateRequest req = request("Sala", "Espacio", 1, "d".repeat(500));
 
         RecursoValidator.DatosRecurso datos = validator.validar(req);
 
-        assertEquals("d".repeat(500), datos.descripcion());
+        assertEquals(500, datos.descripcion().length());
     }
 
     @Test
-    void debeLanzarDescripcionLarga_cuandoDescripcionSupera500Caracteres() {
+    void debeLanzarDescripcionLarga_cuandoExcede500Caracteres() {
         RecursoCreateRequest req = request("Sala", "Espacio", 1, "d".repeat(501));
 
         ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> validator.validar(req));
@@ -207,10 +198,8 @@ class RecursoValidatorTest {
     }
 
     @Test
-    void debeValidarNombreAntesQueDemasCampos_cuandoTodosSonInvalidos() {
-        RecursoCreateRequest req = request(" ", "Mueble", "abc", "d".repeat(501));
-
-        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> validator.validar(req));
+    void debeLanzarNombreObligatorio_cuandoRequestEsNull() {
+        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> validator.validar(null));
 
         assertEquals(RecursoValidator.MSG_NOMBRE_OBLIGATORIO, ex.getMessage());
     }

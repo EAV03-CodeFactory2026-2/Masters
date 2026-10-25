@@ -32,6 +32,8 @@ public class HorarioValidator {
     public static final String MSG_DIA_INVALIDO = "El día '%s' no es válido. Usa LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO o DOMINGO.";
     public static final String MSG_DIA_REPETIDO = "El %s está repetido en el horario.";
     public static final String MSG_DIA_SIN_BLOQUES = "El %s está activo pero no tiene bloques.";
+    // H-08: Mensaje específico para día nulo
+    public static final String MSG_DIA_OBLIGATORIO = "El día es obligatorio.";
 
     private static final Pattern FORMATO_HORA = Pattern.compile("([01]\\d|2[0-3]):[0-5]\\d");
 
@@ -126,7 +128,11 @@ public class HorarioValidator {
     }
 
     private DiaSemana parsearDia(String dia) {
-        String normalizado = Normalizer.normalize(Objects.requireNonNullElse(dia, "").trim(), Normalizer.Form.NFD)
+        // H-08: Mensaje específico cuando el día es nulo, sin mostrar "null" literal
+        if (dia == null) {
+            throw new HorarioInvalidoException(MSG_DIA_OBLIGATORIO, null, null);
+        }
+        String normalizado = Normalizer.normalize(dia.trim(), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "");
         return Arrays.stream(DiaSemana.values())
                 .filter(valor -> valor.name().equalsIgnoreCase(normalizado))

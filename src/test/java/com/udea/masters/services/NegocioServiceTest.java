@@ -87,13 +87,12 @@ class NegocioServiceTest {
 
     @Test
     void crearNegocioFallaCuandoUsuarioNoEsPropietario() {
-        when(negocioRepository.existsByIdentificacionFiscalIgnoreCase("NIT-123456")).thenReturn(false);
-
+        // H-01: El rol se valida antes de consultar el repositorio
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> negocioService.crearNegocio(request, 10, false));
 
         assertTrue(ex.getMessage().contains("no tiene el rol de Propietario"));
-        verify(negocioRepository, never()).save(any(Negocio.class));
+        verifyNoInteractions(negocioRepository);
     }
 
     @Test
@@ -151,13 +150,12 @@ class NegocioServiceTest {
 
     @Test
     void debeLanzarIllegalArgument_cuandoContextoSinAutenticacion() {
-        when(negocioRepository.existsByIdentificacionFiscalIgnoreCase("NIT-123456")).thenReturn(false);
-
+        // H-01: El rol se valida antes de consultar el repositorio
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> negocioService.crearNegocio(request, 10));
 
         assertEquals("El usuario especificado no tiene el rol de Propietario.", ex.getMessage());
-        verify(negocioRepository, never()).save(any(Negocio.class));
+        verifyNoInteractions(negocioRepository);
     }
 
     @Test
@@ -165,37 +163,36 @@ class NegocioServiceTest {
         Authentication auth = mock(Authentication.class);
         doReturn(null).when(auth).getAuthorities();
         SecurityContextHolder.getContext().setAuthentication(auth);
-        when(negocioRepository.existsByIdentificacionFiscalIgnoreCase("NIT-123456")).thenReturn(false);
 
+        // H-01: El rol se valida antes de consultar el repositorio
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> negocioService.crearNegocio(request, 10));
 
         assertEquals("El usuario especificado no tiene el rol de Propietario.", ex.getMessage());
-        verify(negocioRepository, never()).save(any(Negocio.class));
+        verifyNoInteractions(negocioRepository);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"ROLE_CLIENTE", "PROVEEDOR", "ROLE_PROPIETARIOS"})
     void debeLanzarIllegalArgument_cuandoContextoConRolDistintoAPropietario(String rol) {
         autenticarCon(rol);
-        when(negocioRepository.existsByIdentificacionFiscalIgnoreCase("NIT-123456")).thenReturn(false);
 
+        // H-01: El rol se valida antes de consultar el repositorio
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> negocioService.crearNegocio(request, 10));
 
         assertEquals("El usuario especificado no tiene el rol de Propietario.", ex.getMessage());
-        verify(negocioRepository, never()).save(any(Negocio.class));
+        verifyNoInteractions(negocioRepository);
     }
 
     @Test
-    void debeLanzar409AntesDeValidarRol_cuandoIdentificacionDuplicadaYSinRol() {
-        when(negocioRepository.existsByIdentificacionFiscalIgnoreCase("NIT-123456")).thenReturn(true);
-
-        RecursoDuplicadoException ex = assertThrows(RecursoDuplicadoException.class,
+    void debeValidarRolAntesDeConsultarIdentificacionDuplicada_cuandoUsuarioNoTieneRol() {
+        // H-01: Un usuario sin rol Propietario debe ser rechazado sin consultar el repositorio para evitar enumeración
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> negocioService.crearNegocio(request, 10));
 
-        assertEquals("La identificación fiscal ya está en uso en la plataforma.", ex.getMessage());
-        verify(negocioRepository, never()).save(any(Negocio.class));
+        assertEquals("El usuario especificado no tiene el rol de Propietario.", ex.getMessage());
+        verifyNoInteractions(negocioRepository);
     }
 
     @Test

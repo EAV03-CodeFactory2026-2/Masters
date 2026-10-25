@@ -28,6 +28,9 @@ public class RecursoValidator {
     private static final int NOMBRE_MAX = 100;
     private static final int DESCRIPCION_MAX = 500;
 
+    // H-06: Expresión sin \+? para rechazar el signo '+'; acepta solo dígitos en el rango 1..999
+    private static final String PATRON_CANTIDAD = "0*[1-9]\\d{0,2}";
+
     public record DatosRecurso(String nombre, String nombreNormalizado, TipoRecurso tipo,
                                Integer cantidad, String descripcion) {
     }
@@ -49,7 +52,7 @@ public class RecursoValidator {
         String cantidadTexto = TIPOS_ENTEROS.contains(Optional.ofNullable(cantidadObj).map(Object::getClass).orElse(Void.class))
                 ? cantidadObj.toString().trim()
                 : "";
-        if (!cantidadTexto.matches("\\+?0*[1-9]\\d{0,2}")) {
+        if (!cantidadTexto.matches(PATRON_CANTIDAD)) {
             throw new ReglaNegocioException(MSG_CANTIDAD_INVALIDA);
         }
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.udea.masters.controllers.DTOs.NegocioCreateRequest;
 import com.udea.masters.entities.Negocio;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.INegocioService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-import java.security.Principal;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -36,13 +36,15 @@ class NegocioControllerTest {
     @Mock
     private INegocioService negocioService;
 
+    @Mock
+    private IAuthenticationFacade authenticationFacade;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Principal principal = () -> "10";
 
     @BeforeEach
     void setUp() {
-        NegocioController controller = new NegocioController(negocioService);
+        NegocioController controller = new NegocioController(negocioService, authenticationFacade);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
@@ -64,10 +66,10 @@ class NegocioControllerTest {
     @Test
     void crearNegocioRetorna201() throws Exception {
         Negocio negocio = Negocio.builder().idNegocio(1).nombreNegocio("Peluquería Central").build();
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(negocioService.crearNegocio(any(NegocioCreateRequest.class), eq(10))).thenReturn(negocio);
 
         mockMvc.perform(post("/api/v1/negocios")
-                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestValido())))
                 .andExpect(status().isCreated())
@@ -77,11 +79,11 @@ class NegocioControllerTest {
 
     @Test
     void crearNegocioRetorna409CuandoIdentificacionFiscalDuplicada() throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(negocioService.crearNegocio(any(NegocioCreateRequest.class), eq(10)))
                 .thenThrow(new RecursoDuplicadoException("La identificación fiscal ya está en uso en la plataforma."));
 
         mockMvc.perform(post("/api/v1/negocios")
-                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestValido())))
                 .andExpect(status().isConflict())
@@ -91,21 +93,21 @@ class NegocioControllerTest {
     @Test
     void listarMisNegociosRetorna200() throws Exception {
         Negocio negocio = Negocio.builder().idNegocio(1).nombreNegocio("Peluquería Central").build();
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(negocioService.listarMisNegocios(10)).thenReturn(List.of(negocio));
 
-        mockMvc.perform(get("/api/v1/negocios")
-                        .principal(principal))
+        mockMvc.perform(get("/api/v1/negocios"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].idNegocio").value(1));
     }
 
     @Test
     void debeRetornar400_cuandoCrearNegocioSinRolPropietario() throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(negocioService.crearNegocio(any(NegocioCreateRequest.class), eq(10)))
                 .thenThrow(new IllegalArgumentException("El usuario especificado no tiene el rol de Propietario."));
 
         mockMvc.perform(post("/api/v1/negocios")
-                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestValido())))
                 .andExpect(status().isBadRequest())
@@ -114,21 +116,41 @@ class NegocioControllerTest {
 
     @Test
     void debeRetornar400_cuandoListarNegociosSinRolPropietario() throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(negocioService.listarMisNegocios(10))
                 .thenThrow(new IllegalArgumentException("El usuario no tiene el rol de Propietario."));
 
-        mockMvc.perform(get("/api/v1/negocios")
-                        .principal(principal))
+        mockMvc.perform(get("/api/v1/negocios"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("El usuario no tiene el rol de Propietario."));
     }
 
     @Test
+    void debeRetornar401_cuandoNoHayUsuarioAutenticado() throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(null);
+
+        mockMvc.perform(post("/api/v1/negocios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestValido())))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("No autenticado o token inválido."));
+    }
+
+    @Test
+    void debeRetornar401_cuandoListarNegociosSinAutenticacion() throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(null);
+
+        mockMvc.perform(get("/api/v1/negocios"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("No autenticado o token inválido."));
+    }
+
+    @Test
     void debeRetornar200ConListaVacia_cuandoPropietarioSinNegocios() throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(negocioService.listarMisNegocios(10)).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/v1/negocios")
-                        .principal(principal))
+        mockMvc.perform(get("/api/v1/negocios"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
     }
@@ -152,7 +174,6 @@ class NegocioControllerTest {
         String body = objectMapper.writeValueAsString(request);
 
         mockMvc.perform(post("/api/v1/negocios")
-                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());

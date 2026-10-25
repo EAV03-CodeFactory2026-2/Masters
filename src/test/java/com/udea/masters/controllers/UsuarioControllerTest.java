@@ -9,6 +9,7 @@ import com.udea.masters.exceptions.GlobalExceptionHandler;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
 import com.udea.masters.exceptions.RecursoNoEncontradoException;
 import com.udea.masters.exceptions.ReglaNegocioException;
+import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.IRegistroService;
 import com.udea.masters.services.IUsuarioService;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,12 +53,15 @@ class UsuarioControllerTest {
     @Mock
     private IRegistroService registroService;
 
+    @Mock
+    private IAuthenticationFacade authenticationFacade;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        UsuarioController controller = new UsuarioController(usuarioService, registroService);
+        UsuarioController controller = new UsuarioController(usuarioService, registroService, authenticationFacade);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
@@ -194,10 +198,11 @@ class UsuarioControllerTest {
                 .correo("laura@correo.com")
                 .build();
 
+        // H-03: el perfil se obtiene desde el facade, no desde el Principal
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(usuarioService.obtenerUsuarioPorId(10)).thenReturn(perfilResponse);
 
-        mockMvc.perform(get("/api/v1/usuarios/perfil")
-                        .principal(() -> "10"))
+        mockMvc.perform(get("/api/v1/usuarios/perfil"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idUsuario").value(10))
                 .andExpect(jsonPath("$.correo").value("laura@correo.com"))
@@ -235,10 +240,12 @@ class UsuarioControllerTest {
     }
 
     @Test
-    void debeRetornar400_cuandoPrincipalNoEsNumerico() throws Exception {
-        mockMvc.perform(get("/api/v1/usuarios/perfil")
-                        .principal(() -> "maria@udea.edu.co"))
-                .andExpect(status().isBadRequest());
+    void debeRetornar401_cuandoNoHayUsuarioAutenticadoEnPerfil() throws Exception {
+        // H-03: Sin autenticación válida el facade retorna null → 401
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(null);
+
+        mockMvc.perform(get("/api/v1/usuarios/perfil"))
+                .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(usuarioService);
     }
@@ -374,4 +381,3 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("Usuario no encontrado con ID: 404"));
     }
 }
-

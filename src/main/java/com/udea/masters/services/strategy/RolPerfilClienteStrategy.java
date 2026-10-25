@@ -8,6 +8,8 @@ import com.udea.masters.repositories.PerfilClienteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 @RequiredArgsConstructor
 public class RolPerfilClienteStrategy implements IRolPerfilStrategy {
@@ -16,7 +18,9 @@ public class RolPerfilClienteStrategy implements IRolPerfilStrategy {
 
     @Override
     public boolean soporta(String nombreRol) {
-        return TipoRol.CLIENTE.getNombre().equalsIgnoreCase(nombreRol);
+        // H-04: aplicar trim() para normalizar el nombre del rol igual que en RegistroXxxStrategy
+        return TipoRol.CLIENTE.getNombre().equalsIgnoreCase(
+                Optional.ofNullable(nombreRol).map(String::trim).orElse(""));
     }
 
     @Override

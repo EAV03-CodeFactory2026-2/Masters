@@ -45,10 +45,11 @@ public class RegistroService implements IRegistroService {
             throw new ReglaNegocioException("Debes indicar el rol con el que te registras.");
         }
 
+        // H-05: Diferenciar entre rol vacío (validado arriba) y rol no soportado
         IRegistroRolStrategy strategy = strategies.stream()
                 .filter(s -> s.soporta(rolSolicitado))
                 .findFirst()
-                .orElseThrow(() -> new ReglaNegocioException("Debes indicar el rol con el que te registras."));
+                .orElseThrow(() -> new ReglaNegocioException("El rol indicado no es válido."));
 
         if (!StringUtils.hasText(request.getCorreo())) {
             throw new ReglaNegocioException("El correo es obligatorio");
