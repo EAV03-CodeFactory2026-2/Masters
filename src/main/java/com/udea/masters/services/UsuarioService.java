@@ -66,9 +66,11 @@ public class UsuarioService implements IUsuarioService {
         Integer currentUserId = authenticationFacade.getAuthenticatedUserId();
         boolean filtroPropietario = TipoRol.PROPIETARIO.getNombre().equalsIgnoreCase(nombreRol);
 
+        // H-07: Unificar la política de visibilidad sin autenticación en ambos métodos:
+        // si currentUserId == null, ambos métodos permiten la visibilidad de manera consistente
         return usuarioRepository.findByRolesNombreRol(nombreRol).stream()
                 .filter(u -> filtroPropietario
-                        ? Objects.equals(currentUserId, u.getIdUsuario())
+                        ? (currentUserId == null || Objects.equals(currentUserId, u.getIdUsuario()))
                         : esUsuarioVisibleParaConsulta(u, currentUserId))
                 .map(this::mapToResponse)
                 .toList();

@@ -29,12 +29,13 @@ public class NegocioService implements INegocioService {
     @Override
     @Transactional
     public Negocio crearNegocio(NegocioCreateRequest request, Integer usuarioIdAutenticado, boolean esPropietario) {
-        if (negocioRepository.existsByIdentificacionFiscalIgnoreCase(request.getIdentificacionFiscal())) {
-            throw new RecursoDuplicadoException("La identificación fiscal ya está en uso en la plataforma.");
-        }
-
+        // H-01: Verificar el rol ANTES de consultar el repositorio para evitar enumeración de NITs
         if (!esPropietario) {
             throw new IllegalArgumentException("El usuario especificado no tiene el rol de Propietario.");
+        }
+
+        if (negocioRepository.existsByIdentificacionFiscalIgnoreCase(request.getIdentificacionFiscal())) {
+            throw new RecursoDuplicadoException("La identificación fiscal ya está en uso en la plataforma.");
         }
 
         Negocio negocio = Negocio.builder()

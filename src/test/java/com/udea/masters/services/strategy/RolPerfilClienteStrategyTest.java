@@ -38,8 +38,9 @@ class RolPerfilClienteStrategyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"Cliente", "cliente", "CLIENTE"})
+    @ValueSource(strings = {"Cliente", "cliente", "CLIENTE", " Cliente ", "  CLIENTE  "})
     void debeRetornarVerdadero_cuandoRolEsCliente(String rol) {
+        // H-04: Normalización unificada con trim()
         boolean resultado = strategy.soporta(rol);
 
         assertTrue(resultado);
@@ -47,8 +48,8 @@ class RolPerfilClienteStrategyTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" Cliente ", "Proveedor", "Propietario"})
-    void debeRetornarFalso_cuandoRolNoCoincideExactamente(String rol) {
+    @ValueSource(strings = {"Proveedor", "Propietario", "Administrador"})
+    void debeRetornarFalso_cuandoRolNoEsCliente(String rol) {
         boolean resultado = strategy.soporta(rol);
 
         assertFalse(resultado);

@@ -3,6 +3,7 @@ package com.udea.masters.controllers;
 import com.udea.masters.controllers.DTOs.ServicioCreateRequest;
 import com.udea.masters.entities.Servicio;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.IServicioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,7 +15,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +25,7 @@ import java.util.Map;
 public class ServicioController {
 
     private final IServicioService servicioService;
+    private final IAuthenticationFacade authenticationFacade;
 
     @Operation(
             summary = "Registrar un nuevo servicio",
@@ -33,12 +34,18 @@ public class ServicioController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Servicio registrado exitosamente con estado inicial No Asignado."),
             @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos, negocio no encontrado o sin permisos de propietario."),
+            @ApiResponse(responseCode = "401", description = "No autenticado o token inválido."),
             @ApiResponse(responseCode = "409", description = "Conflicto: Ya existe un servicio con ese nombre en este negocio.")
     })
     @PostMapping("/servicios")
-    public ResponseEntity<?> crearServicio(@Valid @RequestBody ServicioCreateRequest request, Principal principal) {
+    public ResponseEntity<?> crearServicio(@Valid @RequestBody ServicioCreateRequest request) {
+        // H-03: Obtener el id autenticado desde el facade; responder 401 si no hay sesión válida
+        Integer usuarioId = authenticationFacade.getAuthenticatedUserId();
+        if (usuarioId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autenticado o token inválido."));
+        }
         try {
-            Integer usuarioId = Integer.parseInt(principal.getName());
             Servicio servicio = servicioService.crearServicio(request, usuarioId);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(

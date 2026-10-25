@@ -27,7 +27,9 @@ public class RolPerfilPropietarioStrategy implements IRolPerfilStrategy {
 
     @Override
     public boolean soporta(String nombreRol) {
-        return TipoRol.PROPIETARIO.getNombre().equalsIgnoreCase(nombreRol);
+        // H-04: aplicar trim() para normalizar el nombre del rol igual que en RegistroXxxStrategy
+        return TipoRol.PROPIETARIO.getNombre().equalsIgnoreCase(
+                Optional.ofNullable(nombreRol).map(String::trim).orElse(""));
     }
 
     @Override
@@ -40,14 +42,23 @@ public class RolPerfilPropietarioStrategy implements IRolPerfilStrategy {
         String tipoDocCodigo = request.getTipoDocumento();
         String numeroDoc = request.getNumeroDocumento();
 
-        // Si no se proporcionaron datos de documento, reutilizar los del perfil Proveedor si ya existe
-        Optional<PerfilProveedor> prov = (!StringUtils.hasText(tipoDocCodigo) || !StringUtils.hasText(numeroDoc))
-                ? perfilProveedorRepository.findById(usuario.getIdUsuario())
-                : Optional.empty();
-        tipoDocCodigo = StringUtils.hasText(tipoDocCodigo) ? tipoDocCodigo
-                : prov.map(PerfilProveedor::getTipoDocumento).map(TipoDocumento::getCodigo).orElse(null);
-        numeroDoc = StringUtils.hasText(numeroDoc) ? numeroDoc
-                : prov.map(PerfilProveedor::getNumeroDocumento).orElse(null);
+        // H-02: Reutilizar el documento del otro perfil SOLO si ambos campos vienen vacíos.
+        // Si llega exactamente uno de los dos campos, exigir el otro en lugar de mezclarlo.
+        boolean faltaTipo = !StringUtils.hasText(tipoDocCodigo);
+        boolean faltaNumero = !StringUtils.hasText(numeroDoc);
+
+        if (faltaTipo && faltaNumero) {
+            // Ninguno llegó: intentar reutilizar el perfil Proveedor existente
+            Optional<PerfilProveedor> prov = perfilProveedorRepository.findById(usuario.getIdUsuario());
+            tipoDocCodigo = prov.map(PerfilProveedor::getTipoDocumento).map(TipoDocumento::getCodigo).orElse(null);
+            numeroDoc = prov.map(PerfilProveedor::getNumeroDocumento).orElse(null);
+        } else if (faltaTipo) {
+            // Solo llegó el número pero falta el tipo
+            throw new ReglaNegocioException("Tipo de documento es obligatorio");
+        } else if (faltaNumero) {
+            // Solo llegó el tipo pero falta el número
+            throw new ReglaNegocioException("Número de documento es obligatorio");
+        }
 
         if (!StringUtils.hasText(tipoDocCodigo)) {
             throw new ReglaNegocioException("Tipo de documento es obligatorio");

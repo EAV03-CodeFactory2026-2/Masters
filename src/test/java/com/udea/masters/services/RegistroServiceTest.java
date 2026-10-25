@@ -109,7 +109,8 @@ class RegistroServiceTest {
 
         ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> registroService.registrar(request));
 
-        assertEquals(MENSAJE_ROL, ex.getMessage());
+        // H-05: Mensaje específico para rol no soportado
+        assertEquals("El rol indicado no es válido.", ex.getMessage());
         verify(usuarioRepository, never()).save(any());
     }
 
