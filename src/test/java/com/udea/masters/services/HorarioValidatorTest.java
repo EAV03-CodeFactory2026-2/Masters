@@ -113,7 +113,7 @@ class HorarioValidatorTest {
 
         HorarioInvalidoException ex = assertThrows(HorarioInvalidoException.class, () -> validator.validar(request));
 
-        assertEquals(String.format(HorarioValidator.MSG_DIA_INVALIDO, (Object) null), ex.getMessage());
+        assertEquals(HorarioValidator.MSG_DIA_OBLIGATORIO, ex.getMessage());
         assertNull(ex.getDia());
     }
 

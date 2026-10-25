@@ -251,14 +251,16 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void debeRetornarVacio_cuandoFiltraPorRolPropietarioSinUsuarioAutenticado() {
+    void debeListarPropietario_cuandoFiltraPorRolPropietarioSinUsuarioAutenticado() {
         Usuario propietario = usuarioConRoles(2, rolPropietario);
         when(authenticationFacade.getAuthenticatedUserId()).thenReturn(null);
         when(usuarioRepository.findByRolesNombreRol("Propietario")).thenReturn(List.of(propietario));
 
         List<UsuarioResponse> lista = usuarioService.listarPorRol("Propietario");
 
-        assertTrue(lista.isEmpty());
+        // H-07: Política de visibilidad unificada con listarUsuarios cuando no hay usuario autenticado
+        assertEquals(1, lista.size());
+        assertEquals(2, lista.get(0).getIdUsuario());
     }
 
     @Test

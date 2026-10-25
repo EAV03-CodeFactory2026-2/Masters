@@ -3,6 +3,7 @@ package com.udea.masters.controllers;
 import com.udea.masters.controllers.DTOs.NegocioCreateRequest;
 import com.udea.masters.entities.Negocio;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.INegocioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,7 +15,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
 import java.util.Map;
 
 @RestController
@@ -24,6 +24,7 @@ import java.util.Map;
 public class NegocioController {
 
     private final INegocioService negocioService;
+    private final IAuthenticationFacade authenticationFacade;
 
     @Operation(
             summary = "Registrar un nuevo negocio",
@@ -32,12 +33,18 @@ public class NegocioController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Negocio creado y activado exitosamente."),
             @ApiResponse(responseCode = "400", description = "Error de validación o usuario no autorizado."),
+            @ApiResponse(responseCode = "401", description = "No autenticado o token inválido."),
             @ApiResponse(responseCode = "409", description = "Conflicto: La identificación fiscal ya está en uso.")
     })
     @PostMapping("/negocios")
-    public ResponseEntity<?> crearNegocio(@Valid @RequestBody NegocioCreateRequest request, Principal principal) {
+    public ResponseEntity<?> crearNegocio(@Valid @RequestBody NegocioCreateRequest request) {
+        // H-03: Obtener el id autenticado desde el facade; responder 401 si no hay sesión válida
+        Integer usuarioId = authenticationFacade.getAuthenticatedUserId();
+        if (usuarioId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autenticado o token inválido."));
+        }
         try {
-            Integer usuarioId = Integer.parseInt(principal.getName());
             Negocio negocio = negocioService.crearNegocio(request, usuarioId);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of("mensaje", "Negocio creado y activado exitosamente.", "idNegocio", negocio.getIdNegocio()));
@@ -56,12 +63,18 @@ public class NegocioController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Listado de negocios retornado exitosamente."),
-            @ApiResponse(responseCode = "400", description = "El usuario no tiene el rol de Propietario.")
+            @ApiResponse(responseCode = "400", description = "El usuario no tiene el rol de Propietario."),
+            @ApiResponse(responseCode = "401", description = "No autenticado o token inválido.")
     })
     @GetMapping("/negocios")
-    public ResponseEntity<?> listarMisNegocios(Principal principal) {
+    public ResponseEntity<?> listarMisNegocios() {
+        // H-03: Obtener el id autenticado desde el facade; responder 401 si no hay sesión válida
+        Integer usuarioId = authenticationFacade.getAuthenticatedUserId();
+        if (usuarioId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autenticado o token inválido."));
+        }
         try {
-            Integer usuarioId = Integer.parseInt(principal.getName());
             return ResponseEntity.ok(negocioService.listarMisNegocios(usuarioId));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

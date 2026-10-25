@@ -4,6 +4,7 @@ import com.udea.masters.controllers.DTOs.RegistroResponse;
 import com.udea.masters.controllers.DTOs.RegistroUsuarioRequest;
 import com.udea.masters.controllers.DTOs.RolAsignacionRequest;
 import com.udea.masters.controllers.DTOs.UsuarioResponse;
+import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.IRegistroService;
 import com.udea.masters.services.IUsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +28,7 @@ public class UsuarioController {
 
     private final IUsuarioService usuarioService;
     private final IRegistroService registroService;
+    private final IAuthenticationFacade authenticationFacade;
 
     @Operation(summary = "Registrar cuenta con rol (Propietario, Proveedor, Cliente)", description = "Permite a un usuario registrar su cuenta e iniciar sesión automáticamente con su rol activo.")
     @PostMapping("/registro")
@@ -38,8 +39,13 @@ public class UsuarioController {
 
     @Operation(summary = "Consultar mi perfil", description = "Obtiene los datos del perfil del usuario autenticado.", security = @SecurityRequirement(name = "BearerAuth"))
     @GetMapping("/perfil")
-    public ResponseEntity<UsuarioResponse> obtenerMiPerfil(Principal principal) {
-        Integer usuarioId = Integer.parseInt(principal.getName());
+    public ResponseEntity<?> obtenerMiPerfil() {
+        // H-03: Obtener el id autenticado desde el facade; responder 401 si no hay sesión válida
+        Integer usuarioId = authenticationFacade.getAuthenticatedUserId();
+        if (usuarioId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autenticado o token inválido."));
+        }
         return ResponseEntity.ok(usuarioService.obtenerUsuarioPorId(usuarioId));
     }
 

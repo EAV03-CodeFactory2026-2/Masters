@@ -69,25 +69,26 @@ class RolPerfilPropietarioStrategyTest {
     @ParameterizedTest
     @ValueSource(strings = {"Propietario", "propietario", "PROPIETARIO"})
     void debeRetornarVerdadero_cuandoRolEsPropietario(String rol) {
-        boolean resultado = strategy.soporta(rol);
+        assertTrue(strategy.soporta(rol));
+    }
 
-        assertTrue(resultado);
+    @ParameterizedTest
+    @ValueSource(strings = {"Propietario", "propietario", "PROPIETARIO", " Propietario ", "  PROPIETARIO  "})
+    void debeRetornarVerdadero_cuandoRolEsPropietarioConEspacios(String rol) {
+        // H-04: trim() unificado — los espacios alrededor ya no impiden la coincidencia
+        assertTrue(strategy.soporta(rol));
     }
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" Propietario ", "Cliente", "Proveedor"})
-    void debeRetornarFalso_cuandoRolNoCoincideExactamente(String rol) {
-        boolean resultado = strategy.soporta(rol);
-
-        assertFalse(resultado);
+    @ValueSource(strings = {"Cliente", "Proveedor"})
+    void debeRetornarFalso_cuandoRolNoEsPropietario(String rol) {
+        assertFalse(strategy.soporta(rol));
     }
 
     @Test
     void debeRetornarPropietario_cuandoSeConsultaNombreRol() {
-        String nombre = strategy.getNombreRol();
-
-        assertEquals("Propietario", nombre);
+        assertEquals("Propietario", strategy.getNombreRol());
     }
 
     @Test
@@ -104,14 +105,13 @@ class RolPerfilPropietarioStrategyTest {
         verifyNoInteractions(perfilProveedorRepository);
     }
 
+    // H-02: Solo se reutiliza el perfil Proveedor cuando AMBOS campos vienen vacíos
     @ParameterizedTest
     @CsvSource(value = {
             "NULL, NULL",
-            "'  ', ''",
-            "NULL, 555",
-            "CC, NULL"
+            "'  ', ''"
     }, nullValues = "NULL")
-    void debeReutilizarDocumentoDelProveedor_cuandoFaltanDatos(String tipoDocumento, String numeroDocumento) {
+    void debeReutilizarDocumentoDelProveedor_cuandoAmbosCamposVaciosONulos(String tipoDocumento, String numeroDocumento) {
         PerfilProveedor proveedor = PerfilProveedor.builder().usuarioId(12).tipoDocumento(cedula).numeroDocumento("555").build();
         when(perfilProveedorRepository.findById(12)).thenReturn(Optional.of(proveedor));
         when(tipoDocumentoRepository.findByCodigoIgnoreCase("CC")).thenReturn(Optional.of(cedula));
@@ -124,17 +124,26 @@ class RolPerfilPropietarioStrategyTest {
         assertEquals("555", perfil.getNumeroDocumento());
     }
 
+    // H-02: Si solo llega el tipo, se exige el número en lugar de mezclarlo con el perfil Proveedor
     @Test
-    void debeConservarTipoDelRequest_cuandoSoloFaltaNumero() {
-        TipoDocumento pasaporte = TipoDocumento.builder().idTipoDocumento(3).codigo("PA").nombre("Pasaporte").build();
-        PerfilProveedor proveedor = PerfilProveedor.builder().usuarioId(12).tipoDocumento(cedula).numeroDocumento("555").build();
-        when(perfilProveedorRepository.findById(12)).thenReturn(Optional.of(proveedor));
-        when(tipoDocumentoRepository.findByCodigoIgnoreCase("PA")).thenReturn(Optional.of(pasaporte));
-        when(perfilPropietarioRepository.existsByTipoDocumentoAndNumeroDocumentoIgnoreCase(pasaporte, "555")).thenReturn(false);
+    void debeLanzarReglaNegocio_cuandoSoloLlegaTipoSinNumero() {
+        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class,
+                () -> strategy.asignarPerfil(usuario, request("CC", null)));
 
-        strategy.asignarPerfil(usuario, request("PA", null));
+        assertEquals("Número de documento es obligatorio", ex.getMessage());
+        verify(perfilPropietarioRepository, never()).save(any());
+        verifyNoInteractions(perfilProveedorRepository);
+    }
 
-        assertSame(pasaporte, capturarPerfilGuardado().getTipoDocumento());
+    // H-02: Si solo llega el número, se exige el tipo en lugar de mezclarlo con el perfil Proveedor
+    @Test
+    void debeLanzarReglaNegocio_cuandoSoloLlegaNumeroSinTipo() {
+        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class,
+                () -> strategy.asignarPerfil(usuario, request(null, "555")));
+
+        assertEquals("Tipo de documento es obligatorio", ex.getMessage());
+        verify(perfilPropietarioRepository, never()).save(any());
+        verifyNoInteractions(perfilProveedorRepository);
     }
 
     @Test
@@ -163,11 +172,8 @@ class RolPerfilPropietarioStrategyTest {
 
     @ParameterizedTest
     @CsvSource(value = {
-            "NULL, 555, Tipo de documento es obligatorio",
-            "'', 555, Tipo de documento es obligatorio",
             "NULL, NULL, Tipo de documento es obligatorio",
-            "CC, NULL, Número de documento es obligatorio",
-            "CC, ' ', Número de documento es obligatorio"
+            "'', '', Tipo de documento es obligatorio"
     }, nullValues = "NULL")
     void debeLanzarReglaNegocio_cuandoFaltanDatosYNoHayPerfilProveedor(String tipoDocumento, String numeroDocumento, String mensaje) {
         when(perfilProveedorRepository.findById(12)).thenReturn(Optional.empty());

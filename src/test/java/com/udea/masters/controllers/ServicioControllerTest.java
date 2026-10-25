@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.udea.masters.controllers.DTOs.ServicioCreateRequest;
 import com.udea.masters.entities.Servicio;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.IServicioService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.math.BigDecimal;
-import java.security.Principal;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -38,13 +38,15 @@ class ServicioControllerTest {
     @Mock
     private IServicioService servicioService;
 
+    @Mock
+    private IAuthenticationFacade authenticationFacade;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Principal principal = () -> "1";
 
     @BeforeEach
     void setUp() {
-        ServicioController controller = new ServicioController(servicioService);
+        ServicioController controller = new ServicioController(servicioService, authenticationFacade);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
@@ -72,10 +74,10 @@ class ServicioControllerTest {
                 .estado("No Asignado")
                 .build();
 
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(1);
         when(servicioService.crearServicio(any(ServicioCreateRequest.class), eq(1))).thenReturn(servicio);
 
         mockMvc.perform(post("/api/v1/servicios")
-                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestValido())))
                 .andExpect(status().isCreated())
@@ -85,11 +87,11 @@ class ServicioControllerTest {
 
     @Test
     void crearServicioRetorna409CuandoNombreDuplicado() throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(1);
         when(servicioService.crearServicio(any(ServicioCreateRequest.class), eq(1)))
                 .thenThrow(new RecursoDuplicadoException("Ya existe un servicio con ese nombre en este negocio."));
 
         mockMvc.perform(post("/api/v1/servicios")
-                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestValido())))
                 .andExpect(status().isConflict())
@@ -117,15 +119,26 @@ class ServicioControllerTest {
             "No tienes permisos para agregar servicios a este negocio."
     })
     void debeRetornar400_cuandoServicioRechazaCreacion(String mensaje) throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(1);
         when(servicioService.crearServicio(any(ServicioCreateRequest.class), eq(1)))
                 .thenThrow(new IllegalArgumentException(mensaje));
 
         mockMvc.perform(post("/api/v1/servicios")
-                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestValido())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(mensaje));
+    }
+
+    @Test
+    void debeRetornar401_cuandoNoHayUsuarioAutenticado() throws Exception {
+        when(authenticationFacade.getAuthenticatedUserId()).thenReturn(null);
+
+        mockMvc.perform(post("/api/v1/servicios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestValido())))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("No autenticado o token inválido."));
     }
 
     static Stream<ServicioCreateRequest> requestsInvalidos() {
@@ -146,7 +159,6 @@ class ServicioControllerTest {
         String body = objectMapper.writeValueAsString(request);
 
         mockMvc.perform(post("/api/v1/servicios")
-                        .principal(principal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());

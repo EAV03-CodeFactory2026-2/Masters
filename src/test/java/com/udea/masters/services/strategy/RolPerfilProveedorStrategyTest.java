@@ -79,8 +79,9 @@ class RolPerfilProveedorStrategyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"Proveedor", "proveedor", "PROVEEDOR"})
+    @ValueSource(strings = {"Proveedor", "proveedor", "PROVEEDOR", " Proveedor ", "  PROVEEDOR  "})
     void debeRetornarVerdadero_cuandoRolEsProveedor(String rol) {
+        // H-04: trim() unificado
         boolean resultado = strategy.soporta(rol);
 
         assertTrue(resultado);
@@ -88,8 +89,8 @@ class RolPerfilProveedorStrategyTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" Proveedor ", "Cliente", "Propietario"})
-    void debeRetornarFalso_cuandoRolNoCoincideExactamente(String rol) {
+    @ValueSource(strings = {"Cliente", "Propietario", "Administrador"})
+    void debeRetornarFalso_cuandoRolNoEsProveedor(String rol) {
         boolean resultado = strategy.soporta(rol);
 
         assertFalse(resultado);
@@ -127,14 +128,13 @@ class RolPerfilProveedorStrategyTest {
         assertNull(capturarPerfilGuardado().getDescripcionProfesional());
     }
 
+    // H-02: Solo se reutiliza cuando AMBOS campos vienen vacíos
     @ParameterizedTest
     @CsvSource(value = {
             "NULL, NULL",
-            "' ', ''",
-            "NULL, 999",
-            "CC, NULL"
+            "' ', ''"
     }, nullValues = "NULL")
-    void debeReutilizarDocumentoDelPropietario_cuandoFaltanDatos(String tipoDocumento, String numeroDocumento) {
+    void debeReutilizarDocumentoDelPropietario_cuandoAmbosCamposVacios(String tipoDocumento, String numeroDocumento) {
         request.setTipoDocumento(tipoDocumento);
         request.setNumeroDocumento(numeroDocumento);
         PerfilPropietario propietario = PerfilPropietario.builder().usuarioId(20).tipoDocumento(cedula).numeroDocumento("999").build();
@@ -148,19 +148,30 @@ class RolPerfilProveedorStrategyTest {
         assertEquals("999", perfil.getNumeroDocumento());
     }
 
+    // H-02: Si solo llega tipo sin número, exigir número
     @Test
-    void debeConservarTipoDelRequest_cuandoSoloFaltaNumero() {
-        TipoDocumento extranjeria = TipoDocumento.builder().idTipoDocumento(2).codigo("CE").nombre("Cédula de extranjería").build();
+    void debeLanzarReglaNegocio_cuandoSoloLlegaTipoSinNumero() {
         request.setTipoDocumento("CE");
         request.setNumeroDocumento(null);
-        PerfilPropietario propietario = PerfilPropietario.builder().usuarioId(20).tipoDocumento(cedula).numeroDocumento("999").build();
-        when(perfilPropietarioRepository.findById(20)).thenReturn(Optional.of(propietario));
-        when(tipoDocumentoRepository.findByCodigoIgnoreCase("CE")).thenReturn(Optional.of(extranjeria));
-        when(perfilProveedorRepository.existsByTipoDocumentoAndNumeroDocumentoIgnoreCase(extranjeria, "999")).thenReturn(false);
 
-        strategy.asignarPerfil(usuario, request);
+        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> strategy.asignarPerfil(usuario, request));
 
-        assertSame(extranjeria, capturarPerfilGuardado().getTipoDocumento());
+        assertEquals("Número de documento es obligatorio", ex.getMessage());
+        verify(perfilProveedorRepository, never()).save(any());
+        verifyNoInteractions(perfilPropietarioRepository);
+    }
+
+    // H-02: Si solo llega número sin tipo, exigir tipo
+    @Test
+    void debeLanzarReglaNegocio_cuandoSoloLlegaNumeroSinTipo() {
+        request.setTipoDocumento(null);
+        request.setNumeroDocumento("999");
+
+        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class, () -> strategy.asignarPerfil(usuario, request));
+
+        assertEquals("Tipo de documento es obligatorio", ex.getMessage());
+        verify(perfilProveedorRepository, never()).save(any());
+        verifyNoInteractions(perfilPropietarioRepository);
     }
 
     @Test
@@ -191,11 +202,8 @@ class RolPerfilProveedorStrategyTest {
 
     @ParameterizedTest
     @CsvSource(value = {
-            "NULL, 999, Tipo de documento es obligatorio",
-            "'  ', 999, Tipo de documento es obligatorio",
             "NULL, NULL, Tipo de documento es obligatorio",
-            "CC, NULL, Número de documento es obligatorio",
-            "CC, '', Número de documento es obligatorio"
+            "'  ', '', Tipo de documento es obligatorio"
     }, nullValues = "NULL")
     void debeLanzarReglaNegocio_cuandoFaltanDatosYNoHayPerfilPropietario(String tipoDocumento, String numeroDocumento, String mensaje) {
         request.setTipoDocumento(tipoDocumento);
