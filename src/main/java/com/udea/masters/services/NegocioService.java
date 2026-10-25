@@ -67,6 +67,12 @@ public class NegocioService implements INegocioService {
         return negocioRepository.findByPropietarioId(usuarioIdAutenticado);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Negocio> listarNegociosDisponibles() {
+        return negocioRepository.findByEstado("Activo");
+    }
+
     private boolean tieneRolPropietarioEnContexto() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
                 .map(Authentication::getAuthorities)

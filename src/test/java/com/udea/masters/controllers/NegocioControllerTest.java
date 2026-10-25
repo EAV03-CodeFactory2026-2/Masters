@@ -102,6 +102,28 @@ class NegocioControllerTest {
     }
 
     @Test
+    void listarNegociosDisponiblesRetorna200ConLista() throws Exception {
+        Negocio negocio = Negocio.builder().idNegocio(1).nombreNegocio("Peluquería Central").estado("Activo").build();
+        when(negocioService.listarNegociosDisponibles()).thenReturn(List.of(negocio));
+
+        mockMvc.perform(get("/api/v1/negocios/disponibles"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].idNegocio").value(1))
+                .andExpect(jsonPath("$[0].nombreNegocio").value("Peluquería Central"))
+                .andExpect(jsonPath("$[0].estado").value("Activo"));
+    }
+
+    @Test
+    void listarNegociosDisponiblesRetorna200ConListaVacia() throws Exception {
+        when(negocioService.listarNegociosDisponibles()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/negocios/disponibles"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void debeRetornar400_cuandoCrearNegocioSinRolPropietario() throws Exception {
         when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(negocioService.crearNegocio(any(NegocioCreateRequest.class), eq(10)))

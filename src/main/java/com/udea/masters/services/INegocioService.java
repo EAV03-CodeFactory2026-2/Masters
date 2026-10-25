@@ -10,4 +10,5 @@ public interface INegocioService {
     Negocio crearNegocio(NegocioCreateRequest request, Integer usuarioIdAutenticado);
     List<Negocio> listarMisNegocios(Integer usuarioIdAutenticado, boolean esPropietario);
     List<Negocio> listarMisNegocios(Integer usuarioIdAutenticado);
+    List<Negocio> listarNegociosDisponibles();
 }

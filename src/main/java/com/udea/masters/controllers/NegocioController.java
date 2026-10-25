@@ -81,4 +81,17 @@ public class NegocioController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
+
+    @Operation(
+            summary = "Listar negocios disponibles para clientes",
+            description = "Retorna el catálogo de negocios activos y disponibles en la plataforma para consulta general de clientes."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Catálogo de negocios retornado exitosamente."),
+            @ApiResponse(responseCode = "401", description = "No autenticado o token inválido.")
+    })
+    @GetMapping("/negocios/disponibles")
+    public ResponseEntity<java.util.List<Negocio>> listarNegociosDisponibles() {
+        return ResponseEntity.ok(negocioService.listarNegociosDisponibles());
+    }
 }

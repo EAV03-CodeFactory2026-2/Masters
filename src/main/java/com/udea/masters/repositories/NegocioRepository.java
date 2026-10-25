@@ -9,6 +9,7 @@ import java.util.List;
 @Repository
 public interface NegocioRepository extends JpaRepository<Negocio, Integer> {
     List<Negocio> findByPropietarioId(Integer propietarioId);
+    List<Negocio> findByEstado(String estado);
     boolean existsByIdentificacionFiscalIgnoreCase(String identificacionFiscal);
 }
 

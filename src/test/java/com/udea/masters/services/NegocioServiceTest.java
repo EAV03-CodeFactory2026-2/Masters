@@ -224,4 +224,25 @@ class NegocioServiceTest {
         assertEquals("El usuario no tiene el rol de Propietario.", ex.getMessage());
         verify(negocioRepository, never()).findByPropietarioId(any());
     }
+
+    @Test
+    void debeListarNegociosDisponibles() {
+        when(negocioRepository.findByEstado("Activo")).thenReturn(List.of(negocio));
+
+        List<Negocio> lista = negocioService.listarNegociosDisponibles();
+
+        assertEquals(1, lista.size());
+        assertEquals("Peluquería Central", lista.get(0).getNombreNegocio());
+        verify(negocioRepository).findByEstado("Activo");
+    }
+
+    @Test
+    void debeRetornarListaVacia_cuandoNoHayNegociosDisponibles() {
+        when(negocioRepository.findByEstado("Activo")).thenReturn(List.of());
+
+        List<Negocio> lista = negocioService.listarNegociosDisponibles();
+
+        assertTrue(lista.isEmpty());
+        verify(negocioRepository).findByEstado("Activo");
+    }
 }
