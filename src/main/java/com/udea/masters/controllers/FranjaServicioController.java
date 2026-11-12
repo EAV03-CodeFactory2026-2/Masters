@@ -35,11 +35,10 @@ public class FranjaServicioController {
             @ApiResponse(responseCode = "403", description = "No tienes permiso para definir franjas de este servicio."),
             @ApiResponse(responseCode = "404", description = "Servicio o proveedor no encontrado.")
     })
-    @PostMapping({"/servicios/{servicioId}/franjas"})
+    @PostMapping({"/franjas"})
     public ResponseEntity<FranjaServicioResponse> crearFranja(
-            @PathVariable(value = "servicioId", required = false) Integer servicioId,
             @RequestBody CrearFranjaRequest request) {
-        FranjaServicioResponse respuesta = franjaServicioService.crearFranja(servicioId, request);
+        FranjaServicioResponse respuesta = franjaServicioService.crearFranja(request.getServicioId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
