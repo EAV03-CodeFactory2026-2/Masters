@@ -124,6 +124,29 @@ class NegocioControllerTest {
     }
 
     @Test
+    void debeRetornarDatosCompletosDeVisualizacion_cuandoConsultaNegociosDisponibles() throws Exception {
+        // HU-0044/CA-01
+        Negocio negocio = Negocio.builder()
+                .idNegocio(1)
+                .nombreNegocio("Barbería Centro")
+                .direccionNegocio("Calle 10 # 20-30")
+                .telefono("3001234567")
+                .monedaCodigoIso("COP")
+                .estado("Activo")
+                .build();
+        when(negocioService.listarNegociosDisponibles()).thenReturn(List.of(negocio));
+
+        mockMvc.perform(get("/api/v1/negocios/disponibles"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idNegocio").value(1))
+                .andExpect(jsonPath("$[0].nombreNegocio").value("Barbería Centro"))
+                .andExpect(jsonPath("$[0].direccionNegocio").value("Calle 10 # 20-30"))
+                .andExpect(jsonPath("$[0].telefono").value("3001234567"))
+                .andExpect(jsonPath("$[0].monedaCodigoIso").value("COP"))
+                .andExpect(jsonPath("$[0].estado").value("Activo"));
+    }
+
+    @Test
     void debeRetornar400_cuandoCrearNegocioSinRolPropietario() throws Exception {
         when(authenticationFacade.getAuthenticatedUserId()).thenReturn(10);
         when(negocioService.crearNegocio(any(NegocioCreateRequest.class), eq(10)))

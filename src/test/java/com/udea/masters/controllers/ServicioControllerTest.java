@@ -174,4 +174,25 @@ class ServicioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
     }
+
+    @Test
+    void debeRetornarDatosCompletosDelServicio_cuandoConsultaServiciosDeUnNegocio() throws Exception {
+        // HU-0044/CA-03
+        Servicio servicio = Servicio.builder()
+                .idServicio(1)
+                .nombre("Corte de cabello")
+                .descripcion("Corte clásico")
+                .duracionMinutos(30)
+                .precio(new BigDecimal("15.50"))
+                .build();
+        when(servicioService.listarServiciosPorNegocio(10)).thenReturn(List.of(servicio));
+
+        mockMvc.perform(get("/api/v1/servicios/negocio/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idServicio").value(1))
+                .andExpect(jsonPath("$[0].nombre").value("Corte de cabello"))
+                .andExpect(jsonPath("$[0].descripcion").value("Corte clásico"))
+                .andExpect(jsonPath("$[0].duracionMinutos").value(30))
+                .andExpect(jsonPath("$[0].precio").value(15.50));
+    }
 }
