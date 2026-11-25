@@ -3,6 +3,7 @@ package com.udea.masters.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.udea.masters.controllers.DTOs.ServicioCreateRequest;
 import com.udea.masters.entities.Servicio;
+import com.udea.masters.exceptions.GlobalExceptionHandler;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
 import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.IServicioService;
@@ -51,6 +52,7 @@ class ServicioControllerTest {
         validator.afterPropertiesSet();
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .build();
     }

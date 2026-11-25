@@ -3,6 +3,7 @@ package com.udea.masters.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.udea.masters.controllers.DTOs.NegocioCreateRequest;
 import com.udea.masters.entities.Negocio;
+import com.udea.masters.exceptions.GlobalExceptionHandler;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
 import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.INegocioService;
@@ -49,6 +50,7 @@ class NegocioControllerTest {
         validator.afterPropertiesSet();
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .build();
     }

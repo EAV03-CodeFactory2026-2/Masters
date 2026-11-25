@@ -14,6 +14,11 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(NoAutenticadoException.class)
+    public ResponseEntity<Map<String, Object>> handleNoAutenticado(NoAutenticadoException ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
     @ExceptionHandler(RecursoDuplicadoException.class)
     public ResponseEntity<Map<String, Object>> handleRecursoDuplicado(RecursoDuplicadoException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());

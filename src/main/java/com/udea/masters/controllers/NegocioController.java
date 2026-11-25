@@ -2,7 +2,7 @@ package com.udea.masters.controllers;
 
 import com.udea.masters.controllers.DTOs.NegocioCreateRequest;
 import com.udea.masters.entities.Negocio;
-import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.exceptions.NoAutenticadoException;
 import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.INegocioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -38,23 +39,10 @@ public class NegocioController {
     })
     @PostMapping("/negocios")
     public ResponseEntity<?> crearNegocio(@Valid @RequestBody NegocioCreateRequest request) {
-        // H-03: Obtener el id autenticado desde el facade; responder 401 si no hay sesión válida
-        Integer usuarioId = authenticationFacade.getAuthenticatedUserId();
-        if (usuarioId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "No autenticado o token inválido."));
-        }
-        try {
-            Negocio negocio = negocioService.crearNegocio(request, usuarioId);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(Map.of("mensaje", "Negocio creado y activado exitosamente.", "idNegocio", negocio.getIdNegocio()));
-        } catch (RecursoDuplicadoException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", e.getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", e.getMessage()));
-        }
+        Integer usuarioId = obtenerUsuarioAutenticado();
+        Negocio negocio = negocioService.crearNegocio(request, usuarioId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("mensaje", "Negocio creado y activado exitosamente.", "idNegocio", negocio.getIdNegocio()));
     }
 
     @Operation(
@@ -68,18 +56,8 @@ public class NegocioController {
     })
     @GetMapping("/negocios")
     public ResponseEntity<?> listarMisNegocios() {
-        // H-03: Obtener el id autenticado desde el facade; responder 401 si no hay sesión válida
-        Integer usuarioId = authenticationFacade.getAuthenticatedUserId();
-        if (usuarioId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "No autenticado o token inválido."));
-        }
-        try {
-            return ResponseEntity.ok(negocioService.listarMisNegocios(usuarioId));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", e.getMessage()));
-        }
+        Integer usuarioId = obtenerUsuarioAutenticado();
+        return ResponseEntity.ok(negocioService.listarMisNegocios(usuarioId));
     }
 
     @Operation(
@@ -93,5 +71,10 @@ public class NegocioController {
     @GetMapping("/negocios/disponibles")
     public ResponseEntity<java.util.List<Negocio>> listarNegociosDisponibles() {
         return ResponseEntity.ok(negocioService.listarNegociosDisponibles());
+    }
+
+    private Integer obtenerUsuarioAutenticado() {
+        return Optional.ofNullable(authenticationFacade.getAuthenticatedUserId())
+                .orElseThrow(() -> new NoAutenticadoException("No autenticado o token inválido."));
     }
 }

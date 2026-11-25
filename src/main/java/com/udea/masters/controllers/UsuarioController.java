@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.udea.masters.exceptions.NoAutenticadoException;
 
 @RestController
 @RequestMapping({"/api/v1/usuarios", "/api/v1/auth"})
@@ -40,24 +41,14 @@ public class UsuarioController {
 
     @Operation(summary = "Consultar mi perfil", description = "Obtiene los datos del perfil del usuario autenticado.", security = @SecurityRequirement(name = "BearerAuth"))
     @GetMapping("/perfil")
-    public ResponseEntity<Object> obtenerMiPerfil() {
-        return obtenerPerfilAutenticado()
-                .map(UsuarioController::respuestaPerfil)
-                .orElseGet(UsuarioController::respuestaNoAutenticado);
+    public ResponseEntity<UsuarioResponse> obtenerMiPerfil() {
+        Integer usuarioId = obtenerUsuarioAutenticado();
+        return ResponseEntity.ok(usuarioService.obtenerUsuarioPorId(usuarioId));
     }
 
-    private Optional<UsuarioResponse> obtenerPerfilAutenticado() {
+    private Integer obtenerUsuarioAutenticado() {
         return Optional.ofNullable(authenticationFacade.getAuthenticatedUserId())
-                .map(usuarioService::obtenerUsuarioPorId);
-    }
-
-    private static ResponseEntity<Object> respuestaPerfil(UsuarioResponse perfil) {
-        return ResponseEntity.ok(perfil);
-    }
-
-    private static ResponseEntity<Object> respuestaNoAutenticado() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("error", "No autenticado o token inválido."));
+                .orElseThrow(() -> new NoAutenticadoException("No autenticado o token inválido."));
     }
 
     @Operation(summary = "Consultar usuario por ID", description = "Obtiene los detalles del usuario según su identificador único. Requiere rol Propietario o ser el propio usuario.", security = @SecurityRequirement(name = "BearerAuth"))

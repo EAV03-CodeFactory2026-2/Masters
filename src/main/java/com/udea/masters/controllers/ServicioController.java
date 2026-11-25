@@ -2,7 +2,7 @@ package com.udea.masters.controllers;
 
 import com.udea.masters.controllers.DTOs.ServicioCreateRequest;
 import com.udea.masters.entities.Servicio;
-import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.exceptions.NoAutenticadoException;
 import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.IServicioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -39,27 +40,14 @@ public class ServicioController {
     })
     @PostMapping("/servicios")
     public ResponseEntity<?> crearServicio(@Valid @RequestBody ServicioCreateRequest request) {
-        // H-03: Obtener el id autenticado desde el facade; responder 401 si no hay sesión válida
-        Integer usuarioId = authenticationFacade.getAuthenticatedUserId();
-        if (usuarioId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "No autenticado o token inválido."));
-        }
-        try {
-            Servicio servicio = servicioService.crearServicio(request, usuarioId);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(Map.of(
-                            "mensaje", "Servicio registrado exitosamente en el catálogo.",
-                            "idServicio", servicio.getIdServicio(),
-                            "estado", servicio.getEstado()
-                    ));
-        } catch (RecursoDuplicadoException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", e.getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", e.getMessage()));
-        }
+        Integer usuarioId = obtenerUsuarioAutenticado();
+        Servicio servicio = servicioService.crearServicio(request, usuarioId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of(
+                        "mensaje", "Servicio registrado exitosamente en el catálogo.",
+                        "idServicio", servicio.getIdServicio(),
+                        "estado", servicio.getEstado()
+                ));
     }
 
     @Operation(
@@ -72,5 +60,10 @@ public class ServicioController {
     @GetMapping("/servicios/negocio/{id}")
     public ResponseEntity<List<Servicio>> listarServiciosPorNegocio(@PathVariable("id") Integer negocioId) {
         return ResponseEntity.ok(servicioService.listarServiciosPorNegocio(negocioId));
+    }
+
+    private Integer obtenerUsuarioAutenticado() {
+        return Optional.ofNullable(authenticationFacade.getAuthenticatedUserId())
+                .orElseThrow(() -> new NoAutenticadoException("No autenticado o token inválido."));
     }
 }
