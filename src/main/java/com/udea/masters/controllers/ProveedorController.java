@@ -14,6 +14,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+import java.util.stream.Stream;
+
 @RestController
 @RequestMapping("/api/v1/proveedores")
 @RequiredArgsConstructor
@@ -47,9 +50,19 @@ public class ProveedorController {
             @Parameter(description = "Índice de página base 0 (opcional)", example = "0")
             @RequestParam(required = false) Integer page
     ) {
-        String textoBusqueda = StringUtils.hasText(query) ? query : criterio;
-        Integer pageBaseUno = page != null && page >= 0 ? Integer.valueOf(page + 1) : page;
-        Integer numeroPagina = pagina != null ? pagina : pageBaseUno;
+        String textoBusqueda = Stream.of(query, criterio)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null);
+        Integer pageBaseUno = convertirPaginaBaseCero(page);
+        Integer numeroPagina = Optional.ofNullable(pagina).orElse(pageBaseUno);
         return ResponseEntity.ok(proveedorService.consultarDirectorio(textoBusqueda, numeroPagina));
+    }
+
+    private Integer convertirPaginaBaseCero(Integer page) {
+        if (page == null) {
+            return null;
+        }
+        return page >= 0 ? page + 1 : page;
     }
 }

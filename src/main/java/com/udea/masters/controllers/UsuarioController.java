@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import com.udea.masters.exceptions.NoAutenticadoException;
-
 @RestController
 @RequestMapping({"/api/v1/usuarios", "/api/v1/auth"})
 @RequiredArgsConstructor

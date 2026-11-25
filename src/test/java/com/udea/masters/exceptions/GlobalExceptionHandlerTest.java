@@ -48,7 +48,7 @@ class GlobalExceptionHandlerTest {
     void debeRetornar409_cuandoRecursoDuplicado() {
         RecursoDuplicadoException ex = new RecursoDuplicadoException("Ya existe un recurso con este nombre.");
 
-        ResponseEntity<Map<String, Object>> respuesta = handler.handleRecursoDuplicado(ex);
+        ResponseEntity<Map<String, Object>> respuesta = handler.handleDomainException(ex);
 
         assertRespuesta(respuesta, HttpStatus.CONFLICT, "Ya existe un recurso con este nombre.");
     }
@@ -57,7 +57,7 @@ class GlobalExceptionHandlerTest {
     void debeRetornar404_cuandoRecursoNoEncontrado() {
         RecursoNoEncontradoException ex = new RecursoNoEncontradoException("Negocio no encontrado.");
 
-        ResponseEntity<Map<String, Object>> respuesta = handler.handleRecursoNoEncontrado(ex);
+        ResponseEntity<Map<String, Object>> respuesta = handler.handleDomainException(ex);
 
         assertRespuesta(respuesta, HttpStatus.NOT_FOUND, "Negocio no encontrado.");
     }
@@ -66,7 +66,7 @@ class GlobalExceptionHandlerTest {
     void debeRetornar400_cuandoReglaNegocioIncumplida() {
         ReglaNegocioException ex = new ReglaNegocioException("La cantidad debe ser un número entero entre 1 y 999.");
 
-        ResponseEntity<Map<String, Object>> respuesta = handler.handleReglaNegocio(ex);
+        ResponseEntity<Map<String, Object>> respuesta = handler.handleDomainException(ex);
 
         assertRespuesta(respuesta, HttpStatus.BAD_REQUEST, "La cantidad debe ser un número entero entre 1 y 999.");
     }
@@ -114,7 +114,7 @@ class GlobalExceptionHandlerTest {
     void debeRetornar400_cuandoIllegalArgument() {
         IllegalArgumentException ex = new IllegalArgumentException("El usuario no tiene el rol de Propietario.");
 
-        ResponseEntity<Map<String, Object>> respuesta = handler.handleIllegalArgument(ex);
+        ResponseEntity<Map<String, Object>> respuesta = handler.handleDomainException(ex);
 
         assertRespuesta(respuesta, HttpStatus.BAD_REQUEST, "El usuario no tiene el rol de Propietario.");
     }
@@ -145,7 +145,7 @@ class GlobalExceptionHandlerTest {
     void debeRetornar403_cuandoAccesoDenegado() {
         AccesoDenegadoException ex = new AccesoDenegadoException("Solo un Propietario puede gestionar los recursos del negocio.");
 
-        ResponseEntity<Map<String, Object>> respuesta = handler.handleAccesoDenegado(ex);
+        ResponseEntity<Map<String, Object>> respuesta = handler.handleDomainException(ex);
 
         assertRespuesta(respuesta, HttpStatus.FORBIDDEN, "Solo un Propietario puede gestionar los recursos del negocio.");
     }
