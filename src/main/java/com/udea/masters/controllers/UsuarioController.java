@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping({"/api/v1/usuarios", "/api/v1/auth"})
@@ -39,14 +40,24 @@ public class UsuarioController {
 
     @Operation(summary = "Consultar mi perfil", description = "Obtiene los datos del perfil del usuario autenticado.", security = @SecurityRequirement(name = "BearerAuth"))
     @GetMapping("/perfil")
-    public ResponseEntity<?> obtenerMiPerfil() {
-        // H-03: Obtener el id autenticado desde el facade; responder 401 si no hay sesión válida
-        Integer usuarioId = authenticationFacade.getAuthenticatedUserId();
-        if (usuarioId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "No autenticado o token inválido."));
-        }
-        return ResponseEntity.ok(usuarioService.obtenerUsuarioPorId(usuarioId));
+    public ResponseEntity<Object> obtenerMiPerfil() {
+        return obtenerPerfilAutenticado()
+                .map(UsuarioController::respuestaPerfil)
+                .orElseGet(UsuarioController::respuestaNoAutenticado);
+    }
+
+    private Optional<UsuarioResponse> obtenerPerfilAutenticado() {
+        return Optional.ofNullable(authenticationFacade.getAuthenticatedUserId())
+                .map(usuarioService::obtenerUsuarioPorId);
+    }
+
+    private static ResponseEntity<Object> respuestaPerfil(UsuarioResponse perfil) {
+        return ResponseEntity.ok(perfil);
+    }
+
+    private static ResponseEntity<Object> respuestaNoAutenticado() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "No autenticado o token inválido."));
     }
 
     @Operation(summary = "Consultar usuario por ID", description = "Obtiene los detalles del usuario según su identificador único. Requiere rol Propietario o ser el propio usuario.", security = @SecurityRequirement(name = "BearerAuth"))

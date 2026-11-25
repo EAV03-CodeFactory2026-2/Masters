@@ -245,7 +245,8 @@ class UsuarioControllerTest {
         when(authenticationFacade.getAuthenticatedUserId()).thenReturn(null);
 
         mockMvc.perform(get("/api/v1/usuarios/perfil"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("No autenticado o token inválido."));
 
         verifyNoInteractions(usuarioService);
     }
