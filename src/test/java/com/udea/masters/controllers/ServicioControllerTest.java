@@ -5,6 +5,7 @@ import com.udea.masters.controllers.DTOs.ServicioCreateRequest;
 import com.udea.masters.entities.Servicio;
 import com.udea.masters.exceptions.GlobalExceptionHandler;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.exceptions.RecursoNoEncontradoException;
 import com.udea.masters.security.IAuthenticationFacade;
 import com.udea.masters.services.IServicioService;
 import org.junit.jupiter.api.BeforeEach;
@@ -175,6 +176,17 @@ class ServicioControllerTest {
         mockMvc.perform(get("/api/v1/servicios/negocio/10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void debeRetornar404_cuandoNegocioNoExiste() throws Exception {
+        // HU-0044/CA-05 (CP-18)
+        when(servicioService.listarServiciosPorNegocio(999999))
+                .thenThrow(new RecursoNoEncontradoException("Negocio no encontrado."));
+
+        mockMvc.perform(get("/api/v1/servicios/negocio/999999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Negocio no encontrado."));
     }
 
     @Test

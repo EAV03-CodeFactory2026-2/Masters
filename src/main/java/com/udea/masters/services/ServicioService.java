@@ -4,6 +4,7 @@ import com.udea.masters.controllers.DTOs.ServicioCreateRequest;
 import com.udea.masters.entities.Negocio;
 import com.udea.masters.entities.Servicio;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.exceptions.RecursoNoEncontradoException;
 import com.udea.masters.repositories.NegocioRepository;
 import com.udea.masters.repositories.ServicioRepository;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +64,9 @@ public class ServicioService implements IServicioService {
     @Override
     @Transactional(readOnly = true)
     public List<Servicio> listarServiciosPorNegocio(Integer negocioId) {
+        if (!negocioRepository.existsById(negocioId)) {
+            throw new RecursoNoEncontradoException("Negocio no encontrado.");
+        }
         return servicioRepository.findByNegocioIdNegocio(negocioId);
     }
 

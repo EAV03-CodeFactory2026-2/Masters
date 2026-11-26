@@ -4,6 +4,7 @@ import com.udea.masters.controllers.DTOs.ServicioCreateRequest;
 import com.udea.masters.entities.Negocio;
 import com.udea.masters.entities.Servicio;
 import com.udea.masters.exceptions.RecursoDuplicadoException;
+import com.udea.masters.exceptions.RecursoNoEncontradoException;
 import com.udea.masters.repositories.NegocioRepository;
 import com.udea.masters.repositories.ServicioRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -123,6 +124,7 @@ class ServicioServiceTest {
 
     @Test
     void listarServiciosPorNegocioExitoso() {
+        when(negocioRepository.existsById(5)).thenReturn(true);
         when(servicioRepository.findByNegocioIdNegocio(5)).thenReturn(List.of(servicio));
 
         List<Servicio> resultado = servicioService.listarServiciosPorNegocio(5);
@@ -213,10 +215,23 @@ class ServicioServiceTest {
 
     @Test
     void debeRetornarListaVacia_cuandoNegocioSinServicios() {
+        when(negocioRepository.existsById(5)).thenReturn(true);
         when(servicioRepository.findByNegocioIdNegocio(5)).thenReturn(List.of());
 
         List<Servicio> resultado = servicioService.listarServiciosPorNegocio(5);
 
         assertTrue(resultado.isEmpty());
+    }
+
+    @Test
+    void debeLanzarRecursoNoEncontrado_cuandoNegocioNoExisteEnListarServicios() {
+        // HU-0044/CA-05 (CP-18)
+        when(negocioRepository.existsById(999999)).thenReturn(false);
+
+        RecursoNoEncontradoException ex = assertThrows(RecursoNoEncontradoException.class,
+                () -> servicioService.listarServiciosPorNegocio(999999));
+
+        assertEquals("Negocio no encontrado.", ex.getMessage());
+        verify(servicioRepository, never()).findByNegocioIdNegocio(any());
     }
 }

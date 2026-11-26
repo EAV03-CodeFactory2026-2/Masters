@@ -54,7 +54,8 @@ public class ServicioController {
             description = "Retorna la lista de todos los servicios asociados a un negocio específico."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Listado de servicios retornado exitosamente.")
+            @ApiResponse(responseCode = "200", description = "Listado de servicios retornado exitosamente."),
+            @ApiResponse(responseCode = "404", description = "Negocio no encontrado.")
     })
     @GetMapping("/servicios/negocio/{id}")
     public ResponseEntity<List<Servicio>> listarServiciosPorNegocio(@PathVariable("id") Integer negocioId) {
