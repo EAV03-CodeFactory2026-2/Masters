@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SecurityConfigTest {
 
@@ -35,5 +36,16 @@ class SecurityConfigTest {
                 config.checkOrigin("http://localhost:5173")
         );
         assertTrue(Boolean.TRUE.equals(config.getAllowCredentials()));
+    }
+
+    @Test
+    void securityFilterChainSeConstruyeCorrectamente() throws Exception {
+        SecurityConfig securityConfig = new SecurityConfig(mock(JwtAuthenticationFilter.class));
+        org.springframework.security.config.annotation.web.builders.HttpSecurity http =
+                mock(org.springframework.security.config.annotation.web.builders.HttpSecurity.class, org.mockito.Mockito.RETURNS_DEEP_STUBS);
+        when(http.build()).thenReturn(mock(org.springframework.security.web.DefaultSecurityFilterChain.class));
+
+        org.springframework.security.web.SecurityFilterChain chain = securityConfig.securityFilterChain(http);
+        assertNotNull(chain);
     }
 }
